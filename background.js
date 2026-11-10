@@ -1,4 +1,9 @@
 import { getAccessToken, getAccount, handleCallback, isCallbackUrl, signOut, startSignIn, CALLBACK_PORT } from "./lib/auth.js";
+import { initLang } from "./lib/i18n.js";
+
+// Język komunikatów logowania = język interfejsu (ustawienia albo przeglądarka).
+initLang();
+chrome.storage.onChanged.addListener((ch) => { if (ch.settings) initLang(); });
 
 // Kliknięcie ikony: otwiera panel i daje wtyczce zgodę (activeTab) na nagrywanie dźwięku tej karty.
 // Panel otwieramy sami (a nie przez openPanelOnActionClick), bo tylko wtedy Chrome traktuje kliknięcie

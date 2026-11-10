@@ -27,7 +27,9 @@ test("buildRequest: wyszukiwanie i schemat JSON, bez pól zakazanych w trybie pl
   assert.ok(!b.input.some((i) => i.role === "system"));
   const plain = buildRequest({ model: "m", today: "t", webSearch: false, structured: false, fresh: "abc" });
   assert.ok(!plain.tools && !plain.text);
-  assert.match(plain.instructions, /WYŁĄCZNIE obiekt JSON/);
+  assert.match(plain.instructions, /Return ONLY a JSON object/);
+  assert.match(buildRequest({ model: "m", today: "t", webSearch: false, fresh: "x", outLang: "en" }).instructions, /in English/);
+  assert.match(buildRequest({ model: "m", today: "t", webSearch: false, fresh: "x", outLang: "pl" }).instructions, /in Polish/);
 });
 
 test("parseResult radzi sobie z ```json i odrzuca złe URL-e i werdykty", () => {
@@ -68,8 +70,8 @@ test("validateIdToken: poprawny token przechodzi, zły nonce/aud/podpis nie", as
   const { jwt, jwks } = await makeToken(p);
   assert.equal((await validateIdToken(jwt, "oaiapp_1", "n1", { jwks, now })).sub, "u1");
   await assert.rejects(validateIdToken(jwt, "oaiapp_1", "zly", { jwks, now }), /nonce/);
-  await assert.rejects(validateIdToken(jwt, "inny", "n1", { jwks, now }), /innego klienta/);
+  await assert.rejects(validateIdToken(jwt, "inny", "n1", { jwks, now }), /different client/);
   const other = await makeToken(p);
-  await assert.rejects(validateIdToken(jwt, "oaiapp_1", "n1", { jwks: other.jwks, now }), /podpis/);
+  await assert.rejects(validateIdToken(jwt, "oaiapp_1", "n1", { jwks: other.jwks, now }), /signature/);
   assert.equal(decodeJwt(jwt).payload.email, "a@b.c");
 });

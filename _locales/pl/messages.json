@@ -1,0 +1,5 @@
+{
+  "extName": { "message": "Fact Checker – sprawdzanie faktów na żywo" },
+  "extDescription": { "message": "Słucha rozmowy w karcie (wywiad, debata, podcast) i na bieżąco sprawdza wypowiadane fakty w panelu bocznym." },
+  "actionTitle": { "message": "Otwórz Fact Checker" }
+}

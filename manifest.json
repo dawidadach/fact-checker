@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Fact Checker na żywo",
+  "name": "__MSG_extName__",
   "short_name": "Fact Checker",
-  "version": "0.3.0",
+  "version": "0.4.0",
+  "default_locale": "en",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwz2ktjWlVMrBydDzpdxVkdnR4qmI9w5zcDhZhKdfOX1QhU3xDyI/2Snr0NnKvrZA5Ln+BS6rDq4oYpz6g6Qrwk/6b60nSLs4tm/5jgLbmI+FRfCxNUYB0GlL9Gux60EgCLvx+qlg1d3f5owZtfTmAQoNDBNZxWgeUz7mU++VSnTHSjcJDaITogtVKWzKWpBs1f4lZJTxIJZULytzoIOSCk5fUGhnVTZGsOskxZXHr6Nng7PQNKqN/xbQLS0BGlP6IZt2yLOmx6VCNwdFlI57ZZRXHeBPdpi9VPUBeLo2ONgnmc3ceFJReHMDOcpcdOS80/ikQK6r95hty8DQXsEa9QIDAQAB",
-  "description": "Słucha rozmowy w karcie (wywiad, debata, podcast) i na bieżąco sprawdza wypowiadane fakty w panelu bocznym.",
+  "description": "__MSG_extDescription__",
   "minimum_chrome_version": "116",
   "action": {
-    "default_title": "Otwórz Fact Checker",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

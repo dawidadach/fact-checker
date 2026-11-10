@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,17 +11,17 @@
   <div class="brand">
     <span class="dot" id="liveDot" aria-hidden="true"></span>
     <strong>Fact Checker</strong>
-    <span class="status" id="status">Gotowy</span>
+    <span class="status" id="status" data-i18n="app.ready"></span>
   </div>
-  <button class="icon" id="openSettings" title="Ustawienia" aria-label="Ustawienia">⚙</button>
+  <button class="icon" id="openSettings" data-i18n-title="app.settings" data-i18n-aria="app.settings">⚙</button>
 </header>
 
 <section class="controls">
-  <div class="seg" role="radiogroup" aria-label="Źródło dźwięku">
-    <label><input type="radio" name="src" value="tab" checked> Dźwięk karty</label>
-    <label><input type="radio" name="src" value="mic"> Mikrofon</label>
+  <div class="seg" role="radiogroup" data-i18n-aria="src.label">
+    <label><input type="radio" name="src" value="tab" checked> <span data-i18n="src.tab"></span></label>
+    <label><input type="radio" name="src" value="mic"> <span data-i18n="src.mic"></span></label>
   </div>
-  <button class="primary" id="toggle">Start</button>
+  <button class="primary" id="toggle" data-i18n="btn.start"></button>
 </section>
 
 <div class="banner" id="banner" hidden></div>
@@ -30,86 +30,93 @@
 
 <section class="feed" id="feed" aria-live="polite">
   <div class="empty" id="empty">
-    <p><strong>Włącz wywiad, debatę albo podcast</strong>, kliknij ikonę Fact Checkera na pasku <em>będąc na tej karcie</em>, a potem <em>Start</em>.</p>
-    <p>Co ok. 30 s panel wyłapie twierdzenia, które da się sprawdzić (liczby, badania, wydarzenia, cytaty) i pokaże werdykt ze źródłami.</p>
+    <p data-i18n-html="empty.p1"></p>
+    <p data-i18n="empty.p2"></p>
   </div>
 </section>
 
 <details class="transcript" id="transcriptBox">
-  <summary>Transkrypcja <span class="muted" id="wordCount"></span></summary>
+  <summary><span data-i18n="tx.title"></span> <span class="muted" id="wordCount"></span></summary>
   <div class="tx" id="transcript"></div>
   <div class="tx interim" id="interim"></div>
   <div class="row">
-    <button id="checkNow">Sprawdź teraz</button>
-    <button id="exportMd">Eksport (.md)</button>
-    <button id="clear">Wyczyść</button>
+    <button id="checkNow" data-i18n="tx.checkNow"></button>
+    <button id="exportMd" data-i18n="tx.export"></button>
+    <button id="clear" data-i18n="tx.clear"></button>
   </div>
-  <label class="manual">Albo wklej / wpisz tekst do sprawdzenia:
-    <textarea id="manualText" rows="3" placeholder="np. „Bezrobocie w Polsce jest najniższe w UE”"></textarea>
+  <label class="manual"><span data-i18n="tx.manualLabel"></span>
+    <textarea id="manualText" rows="3" data-i18n-placeholder="tx.manualPlaceholder"></textarea>
   </label>
-  <button id="manualCheck">Sprawdź wpisany tekst</button>
+  <button id="manualCheck" data-i18n="tx.manualCheck"></button>
 </details>
 
 <dialog id="settings">
   <form method="dialog" id="settingsForm">
-    <h2>Ustawienia</h2>
+    <h2 id="settingsTitle" data-i18n="app.settings"></h2>
 
     <fieldset>
-      <legend>Model do sprawdzania faktów</legend>
-      <label class="opt"><input type="radio" name="provider" value="chatgpt"> Plan ChatGPT (Plus/Pro) – bez dodatkowych opłat</label>
+      <legend data-i18n="set.provider"></legend>
+      <label class="opt"><input type="radio" name="provider" value="chatgpt"> <span data-i18n="set.providerChatgpt"></span></label>
       <div class="sub" id="chatgptBox">
-        <div id="account" class="muted">Niezalogowano</div>
+        <div id="account" class="muted"></div>
         <button type="button" class="chatgpt" id="signIn">Continue with ChatGPT</button>
-        <button type="button" id="signOut" hidden>Wyloguj</button>
+        <button type="button" id="signOut" hidden data-i18n="set.signOut"></button>
       </div>
-      <label class="opt"><input type="radio" name="provider" value="apikey"> Klucz API OpenAI (płatne za użycie)</label>
+      <label class="opt"><input type="radio" name="provider" value="apikey"> <span data-i18n="set.providerKey"></span></label>
     </fieldset>
 
     <fieldset>
-      <legend>Klucz API OpenAI</legend>
+      <legend data-i18n="set.apiKey"></legend>
       <input type="password" id="apiKey" autocomplete="off" placeholder="sk-…">
-      <p class="hint">Potrzebny tylko w trybach „Klucz API” i „OpenAI” do transkrypcji. Zapisywany tylko w tej przeglądarce.</p>
+      <p class="hint" data-i18n="set.apiKeyHint"></p>
     </fieldset>
 
     <fieldset>
-      <legend>Model</legend>
+      <legend data-i18n="set.model"></legend>
       <div class="row">
-        <select id="model"><option value="">— najpierw zaloguj się lub podaj klucz —</option></select>
-        <button type="button" id="loadModels">Odśwież</button>
+        <select id="model"></select>
+        <button type="button" id="loadModels" data-i18n="set.refresh"></button>
       </div>
-      <label class="check"><input type="checkbox" id="webSearch"> Wyszukiwanie w sieci (zalecane – świeże wydarzenia i źródła)</label>
+      <label class="check"><input type="checkbox" id="webSearch"> <span data-i18n="set.webSearch"></span></label>
     </fieldset>
 
     <fieldset>
-      <legend>Zamiana mowy na tekst</legend>
-      <label class="opt"><input type="radio" name="engine" value="local"> Lokalny model na tym komputerze – darmowe, nic nie wychodzi do sieci</label>
-      <label class="opt"><input type="radio" name="engine" value="openai"> OpenAI (klucz API, ok. 0,70 zł / godz.)</label>
-      <label class="opt"><input type="radio" name="engine" value="chrome"> Wbudowane w Chrome (tylko mikrofon, słabsza jakość)</label>
+      <legend data-i18n="set.engine"></legend>
+      <label class="opt"><input type="radio" name="engine" value="local"> <span data-i18n="set.engineLocal"></span></label>
+      <label class="opt"><input type="radio" name="engine" value="openai"> <span data-i18n="set.engineOpenai"></span></label>
+      <label class="opt"><input type="radio" name="engine" value="chrome"> <span data-i18n="set.engineChrome"></span></label>
     </fieldset>
 
     <fieldset id="modelsBox">
-      <legend>Modele lokalne</legend>
-      <p class="hint" id="deviceInfo">Sprawdzam kartę graficzną…</p>
+      <legend data-i18n="set.localModels"></legend>
+      <p class="hint" id="deviceInfo" data-i18n="set.checkingGpu"></p>
       <div id="modelList" class="models"></div>
       <p class="hint" id="storageInfo"></p>
     </fieldset>
 
     <fieldset>
-      <legend>Rytm i język</legend>
-      <label>Język rozmowy
-        <select id="language">
-          <option value="pl">polski</option>
-          <option value="en">angielski</option>
+      <legend data-i18n="set.rhythm"></legend>
+      <label><span data-i18n="set.uiLang"></span>
+        <select id="uiLang">
+          <option value="auto" data-i18n="set.uiAuto"></option>
+          <option value="en">English</option>
+          <option value="pl">Polski</option>
         </select>
       </label>
-      <label>Sprawdzaj fakty co (s) <input type="number" id="intervalSec" min="10" max="300" step="5"></label>
-      <label>Długość kawałka audio (s) <input type="number" id="chunkSec" min="5" max="25" step="1"></label>
-      <label>Model transkrypcji OpenAI <input id="sttModel" placeholder="gpt-4o-mini-transcribe"></label>
+      <label><span data-i18n="set.convLang"></span>
+        <select id="language">
+          <option value="pl" data-i18n="lang.pl"></option>
+          <option value="en" data-i18n="lang.en"></option>
+        </select>
+      </label>
+      <label><span data-i18n="set.interval"></span> <input type="number" id="intervalSec" min="10" max="300" step="5"></label>
+      <label><span data-i18n="set.chunk"></span> <input type="number" id="chunkSec" min="5" max="25" step="1"></label>
+      <label><span data-i18n="set.sttModel"></span> <input id="sttModel" placeholder="gpt-4o-mini-transcribe"></label>
     </fieldset>
 
     <div class="row end">
-      <button value="cancel">Anuluj</button>
-      <button class="primary" id="saveSettings" value="save">Zapisz</button>
+      <button value="cancel" data-i18n="set.cancel"></button>
+      <button class="primary" id="saveSettings" value="save" data-i18n="set.save"></button>
     </div>
   </form>
 </dialog>

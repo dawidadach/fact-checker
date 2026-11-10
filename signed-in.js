@@ -1,7 +1,11 @@
+import { initLang, t } from "./lib/i18n.js";
+
+await initLang();
 const q = new URLSearchParams(location.search);
 const ok = q.get("ok") === "1";
-document.getElementById("h").textContent = ok ? "Zalogowano przez ChatGPT" : "Logowanie nieudane";
+document.title = t("auth.pageTitle");
+document.getElementById("h").textContent = t(ok ? "auth.okTitle" : "auth.failTitle");
 document.getElementById("p").textContent = ok
-  ? `Konto: ${q.get("msg") || "?"}. Możesz zamknąć tę kartę i wrócić do panelu Fact Checker.`
-  : q.get("msg") || "Spróbuj ponownie z panelu Fact Checker.";
+  ? t("auth.okText", { who: q.get("msg") || "?" })
+  : q.get("msg") || t("auth.failText");
 if (ok) setTimeout(() => window.close(), 2500);

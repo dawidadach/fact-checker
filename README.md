@@ -2,6 +2,20 @@
 
 **[English](#english) · [Polski](#polski)**
 
+### Install in 1 minute
+
+1. **[Download ZIP](https://github.com/dawidadach/fact-checker/archive/refs/heads/main.zip)** and unzip it.
+2. Open **`chrome://extensions`** and switch on **Developer mode** (top right).
+3. Click **Load unpacked** and pick the unzipped `fact-checker-main` folder.
+4. Click the extension icon on a tab with a video or podcast → ⚙ → download a speech model and **Continue with ChatGPT** → **Start**.
+
+### Instalacja w minutę
+
+1. **[Pobierz ZIP](https://github.com/dawidadach/fact-checker/archive/refs/heads/main.zip)** i rozpakuj.
+2. Wejdź na **`chrome://extensions`** i włącz **Tryb dewelopera** (prawy górny róg).
+3. Kliknij **Załaduj rozpakowane** i wskaż rozpakowany folder `fact-checker-main`.
+4. Kliknij ikonę wtyczki na karcie z filmem lub podcastem → ⚙ → pobierz model mowy i **Continue with ChatGPT** → **Start**.
+
 <img src="docs/panel.png" width="340" alt="Side panel with verdicts"> <img src="docs/modele.png" width="300" alt="Local speech models">
 
 <sub>The screenshots show sample responses from a test run, not real fact-checks.</sub>
@@ -84,7 +98,8 @@ Requires Chrome 116 or newer.
 
 In the **Transcript** section you can also press **Check now**, paste any text to check, or **Export** everything to Markdown.
 
-The interface is currently in Polish.
+**Interface language:** English or Polish, picked automatically from your browser language. You can change it in Settings →
+*Interface language*. Verdicts and explanations are written in the interface language; quotes stay in the original language.
 
 ### Updating without losing settings
 
@@ -113,6 +128,8 @@ lib/transcribe.js      tab/mic capture, cutting at pauses, local / OpenAI / Chro
 lib/models.js          local model catalog, download/delete, hallucination filter
 lib/whisper-worker.js  worker that runs the speech model
 lib/pcm-worklet.js     AudioWorklet that delivers 16 kHz audio
+lib/i18n.js            interface translations (English, Polish)
+_locales/              extension name and description in English and Polish
 vendor/                transformers.js 4.3.2 and ONNX Runtime Web (bundled: extensions may not load code from a CDN)
 tests/                 unit tests
 ```
@@ -214,6 +231,9 @@ Wymaga Chrome 116 lub nowszego.
 4. Kliknij **Start**. Karty z werdyktami pojawiają się na górze, najnowsze pierwsze.
 
 W sekcji **Transkrypcja** możesz też kliknąć **Sprawdź teraz**, wkleić dowolny tekst do sprawdzenia albo **wyeksportować** całość do Markdown.
+
+**Język interfejsu:** polski albo angielski, wybierany automatycznie według języka przeglądarki. Zmienisz go w Ustawieniach →
+*Język interfejsu*. Werdykty i wyjaśnienia są pisane w języku interfejsu, cytaty zostają w oryginale.
 
 ### Aktualizacja bez utraty ustawień
 

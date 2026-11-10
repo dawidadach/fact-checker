@@ -1,13 +1,14 @@
 import { buildRequest, isDuplicate, parseResult, unsupportedFeature, VERDICTS } from "./lib/factcheck.js";
 import { listModels, streamResponse } from "./lib/llm.js";
 import { LocalTranscriber, localEngine, MicTranscriber, TabTranscriber } from "./lib/transcribe.js";
-import { deleteModel, detectDevice, getDownloaded, getModel, LANGS, MODELS, storageEstimate, TIERS } from "./lib/models.js";
+import { deleteModel, detectDevice, getDownloaded, getModel, LANGS, MODELS, storageEstimate } from "./lib/models.js";
+import { applyI18n, getLang, resolveLang, setLang, t } from "./lib/i18n.js";
 
 const $ = (id) => document.getElementById(id);
 const DEFAULTS = {
   provider: "chatgpt", apiKey: "", model: "", webSearch: true,
   sttModel: "gpt-4o-mini-transcribe", intervalSec: 30, chunkSec: 12, language: "pl", src: "tab",
-  engine: "local", localModel: "",
+  engine: "local", localModel: "", uiLang: "auto",
 };
 let DEVICE = "cpu";
 const downloads = new Map(); // modelId -> {loaded,total}
@@ -34,7 +35,7 @@ function fillSettingsForm() {
   document.querySelector(`input[name=provider][value=${S.provider}]`).checked = true;
   $("apiKey").value = S.apiKey;
   $("webSearch").checked = S.webSearch;
-  for (const k of ["sttModel", "intervalSec", "chunkSec", "language"]) $(k).value = S[k];
+  for (const k of ["sttModel", "intervalSec", "chunkSec", "language", "uiLang"]) $(k).value = S[k];
   document.querySelector(`input[name=engine][value=${S.engine}]`).checked = true;
   renderModels();
   setModelOptions(S.model ? [{ id: S.model, name: S.model }] : [], S.model);
@@ -49,6 +50,7 @@ function readSettingsForm() {
   S.intervalSec = clamp(+$("intervalSec").value || 30, 10, 300);
   S.chunkSec = clamp(+$("chunkSec").value || 12, 5, 25);
   S.language = $("language").value || "pl";
+  S.uiLang = $("uiLang").value || "auto";
   S.engine = document.querySelector("input[name=engine]:checked")?.value || "local";
   S.localModel = document.querySelector("input[name=localModel]:checked")?.value || S.localModel;
 }
@@ -56,12 +58,16 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 function setModelOptions(models, selected) {
   const sel = $("model");
-  sel.replaceChildren(...(models.length ? models : [{ id: "", name: "— najpierw zaloguj się lub podaj klucz —" }])
+  sel.replaceChildren(...(models.length ? models : [{ id: "", name: t("set.modelEmpty") }])
     .map((m) => new Option(m.name, m.id, false, m.id === selected)));
 }
 
 // ---------- modele lokalne ----------
-const mb = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(".", ",")} GB` : `${n} MB`);
+const mb = (n) => {
+  if (n < 1000) return `${n} MB`;
+  const gb = (n / 1000).toFixed(1);
+  return `${getLang() === "pl" ? gb.replace(".", ",") : gb} GB`;
+};
 
 async function renderModels() {
   const have = await getDownloaded();
@@ -71,7 +77,7 @@ async function renderModels() {
   list.replaceChildren();
   for (const lang of Object.keys(LANGS)) {
     const h = document.createElement("h3");
-    h.textContent = LANGS[lang];
+    h.textContent = t(`lang.${lang}`);
     list.append(h);
     for (const m of MODELS.filter((x) => x.lang === lang)) {
       const row = document.createElement("div");
@@ -80,11 +86,11 @@ async function renderModels() {
       const isHave = !!have[m.id];
       const tooSlow = m.needsGpu && DEVICE === "cpu";
       row.innerHTML = `
-        <input type="radio" name="localModel" value="${m.id}" ${m.id === selected ? "checked" : ""} ${isHave ? "" : "disabled"} aria-label="Używaj ${esc(m.name)}">
-        <div><span class="mname">${esc(m.name)}</span><span class="tier ${m.tier}">${TIERS[m.tier]}</span></div>
+        <input type="radio" name="localModel" value="${m.id}" ${m.id === selected ? "checked" : ""} ${isHave ? "" : "disabled"} aria-label="${esc(t("models.use", { name: m.name }))}">
+        <div><span class="mname">${esc(m.name)}</span><span class="tier ${m.tier}">${t(`models.tier.${m.tier}`)}</span></div>
         <div class="actions"></div>
-        <div class="meta">${mb(m.size[DEVICE])} ${isHave ? '· <span class="ok">pobrany</span>' : ""}${tooSlow ? ' · <span class="warn">bez GPU będzie za wolny na żywo</span>' : ""}</div>
-        <div class="mnote">${esc(m.note)}</div>`;
+        <div class="meta">${mb(m.size[DEVICE])} ${isHave ? `· <span class="ok">${t("models.downloaded")}</span>` : ""}${tooSlow ? ` · <span class="warn">${t("models.tooSlow")}</span>` : ""}</div>
+        <div class="mnote">${esc(m.note[getLang()] || m.note.en)}</div>`;
       const act = row.querySelector(".actions");
       if (dl) {
         const pr = document.createElement("progress");
@@ -93,7 +99,7 @@ async function renderModels() {
         act.textContent = dl.total ? `${Math.round((100 * dl.loaded) / dl.total)}%` : "…";
       } else if (isHave) {
         const del = document.createElement("button");
-        del.type = "button"; del.textContent = "Usuń";
+        del.type = "button"; del.textContent = t("models.delete");
         del.onclick = async () => {
           if (localEngine.ready?.repo === m.repo) localEngine.unload();
           await deleteModel(m.id);
@@ -103,7 +109,7 @@ async function renderModels() {
         act.append(del);
       } else {
         const get = document.createElement("button");
-        get.type = "button"; get.textContent = "Pobierz";
+        get.type = "button"; get.textContent = t("models.download");
         get.onclick = () => downloadModel(m.id);
         act.append(get);
       }
@@ -112,10 +118,8 @@ async function renderModels() {
     }
   }
   const est = await storageEstimate();
-  $("storageInfo").textContent = est ? `Zajęte przez wtyczkę: ${mb(est.usageMB)} (dostępne ok. ${mb(est.quotaMB)}).` : "";
-  $("deviceInfo").textContent = DEVICE === "gpu"
-    ? "Wykryto kartę graficzną (WebGPU) – modele będą działać szybko. Model pobierasz raz, potem działa bez internetu."
-    : "Brak WebGPU – modele działają na procesorze. Wybierz Lekki lub Średni. (Włącz akcelerację sprzętową w ustawieniach Chrome, jeśli masz kartę graficzną.)";
+  $("storageInfo").textContent = est ? t("models.storage", { used: mb(est.usageMB), quota: mb(est.quotaMB) }) : "";
+  $("deviceInfo").textContent = t(DEVICE === "gpu" ? "models.gpu" : "models.cpu");
 }
 
 async function downloadModel(id) {
@@ -130,7 +134,7 @@ async function downloadModel(id) {
     });
     if (!S.localModel || !(await getDownloaded())[S.localModel]) { S.localModel = id; await saveSettings(); }
   } catch (e) {
-    $("deviceInfo").textContent = `Nie udało się pobrać modelu: ${e.message}`;
+    $("deviceInfo").textContent = t("models.failed", { msg: e.message });
     downloads.delete(id);
     return;
   }
@@ -145,8 +149,8 @@ async function refreshAccount() {
   const r = await bg({ type: "account" });
   const acc = r?.account;
   $("account").textContent = acc
-    ? `Zalogowano: ${acc.email || acc.name || "konto ChatGPT"}${acc.planUsage ? "" : " (bez zgody na użycie planu)"}`
-    : "Niezalogowano";
+    ? t("acc.signedIn", { who: acc.email || acc.name || t("acc.chatgptAccount") }) + (acc.planUsage ? "" : t("acc.noPlan"))
+    : t("acc.signedOut");
   $("signIn").hidden = !!acc;
   $("signOut").hidden = !acc;
   return acc;
@@ -154,17 +158,17 @@ async function refreshAccount() {
 
 async function getToken(provider = S.provider) {
   if (provider === "apikey") {
-    if (!S.apiKey) throw Object.assign(new Error("Podaj klucz API OpenAI w ustawieniach."), { code: "NEED_KEY" });
+    if (!S.apiKey) throw Object.assign(new Error(t("err.needKey")), { code: "NEED_KEY" });
     return S.apiKey;
   }
   const r = await bg({ type: "getToken" });
-  if (!r?.ok) throw Object.assign(new Error(r?.error || "Brak tokenu"), { code: r?.code });
+  if (!r?.ok) throw Object.assign(new Error(r?.error || t("err.noToken")), { code: r?.code });
   return r.token;
 }
 
 async function loadModels(provider = S.provider) {
   const models = await listModels(await getToken(provider));
-  if (!models.length) throw new Error("Lista modeli jest pusta.");
+  if (!models.length) throw new Error(t("err.noModels"));
   return models;
 }
 
@@ -182,7 +186,10 @@ function banner(html, kind = "warn") {
   b.querySelector("[data-open-settings]")?.addEventListener("click", openSettings);
 }
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const hhmm = (t) => new Date(t).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const locale = () => (getLang() === "pl" ? "pl-PL" : "en-GB");
+const hhmm = (ts) => new Date(ts).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const verdictLabel = (v) => t(`verdict.${v}`);
+const openSettingsLink = (key = "err.openSettings") => ` <a href="#" data-open-settings>${t(key)}</a>`;
 
 function renderTranscript() {
   const box = $("transcript");
@@ -194,7 +201,7 @@ function renderTranscript() {
   }));
   box.scrollTop = box.scrollHeight;
   const words = state.segments.reduce((n, s) => n + s.text.split(/\s+/).length, 0);
-  $("wordCount").textContent = words ? `· ${words} słów` : "";
+  $("wordCount").textContent = words ? t("tx.words", { n: words }) : "";
 }
 
 function renderSummary() {
@@ -205,7 +212,7 @@ function renderSummary() {
     const p = document.createElement("span");
     p.className = "pill";
     p.dataset.tone = v.tone;
-    p.textContent = `${v.label}: ${counts[k]}`;
+    p.textContent = `${verdictLabel(k)}: ${counts[k]}`;
     return p;
   }));
   el.hidden = !state.claims.length;
@@ -217,9 +224,9 @@ function addCard(c) {
   node.dataset.tone = v.tone;
   node.classList.add("fresh");
   const pill = node.querySelector(".pill");
-  pill.textContent = v.label;
+  pill.textContent = verdictLabel(c.verdict);
   pill.dataset.tone = v.tone;
-  node.querySelector(".conf").textContent = `pewność: ${c.confidence}`;
+  node.querySelector(".conf").textContent = t("card.confidence", { c: t(`conf.${c.confidence}`) });
   node.querySelector("time").textContent = hhmm(c.t);
   const q = node.querySelector(".quote");
   q.textContent = c.quote ? `${c.speaker ? c.speaker + ": " : ""}„${c.quote}”` : "";
@@ -227,7 +234,7 @@ function addCard(c) {
   node.querySelector(".claim").textContent = c.claim;
   node.querySelector(".expl").textContent = c.explanation;
   const dl = node.querySelector(".more");
-  for (const [label, val] of [["Co potwierdza", c.evidence], ["Przeciwne dane / kontekst", c.counter_evidence], ["Czego brakuje", c.missing_data]]) {
+  for (const [label, val] of [[t("card.evidence"), c.evidence], [t("card.counter"), c.counter_evidence], [t("card.missing"), c.missing_data]]) {
     if (!val) continue;
     const dt = document.createElement("dt"); dt.textContent = label;
     const dd = document.createElement("dd"); dd.textContent = val;
@@ -244,6 +251,16 @@ function addCard(c) {
   }
   $("empty").hidden = true;
   $("feed").prepend(node);
+  return node;
+}
+
+// Po zmianie języka: przerysuj karty (etykiety werdyktów itp.).
+function rerenderCards() {
+  $("feed").querySelectorAll(".card").forEach((n) => n.remove());
+  for (const c of state.claims) addCard(c).classList.remove("fresh");
+  $("empty").hidden = state.claims.length > 0;
+  renderSummary();
+  renderTranscript();
 }
 
 // ---------- tekst z transkrypcji ----------
@@ -271,7 +288,7 @@ async function runCheck({ force = false, manualText = null } = {}) {
   const context = manualText ? "" : state.segments.filter((s) => s.checked).map((s) => s.text).join(" ").slice(-CONTEXT_CHARS);
   fresh?.forEach((s) => (s.checked = true));
   state.busy = true;
-  setStatus("Sprawdzam fakty…", "busy");
+  setStatus(t("status.checking"), "busy");
 
   try {
     let attempt = 0, result;
@@ -285,6 +302,7 @@ async function runCheck({ force = false, manualText = null } = {}) {
         context,
         fresh: freshText,
         checked: state.claims.slice(-25).map((c) => c.claim),
+        outLang: getLang(),
       });
       try {
         result = await streamResponse({ token: await getToken(), body });
@@ -293,7 +311,7 @@ async function runCheck({ force = false, manualText = null } = {}) {
         const feat = unsupportedFeature(e);
         if (feat && !state.disabled.has(feat) && attempt++ < 2) {
           state.disabled.add(feat);
-          if (feat === "webSearch") banner("Wyszukiwanie w sieci nie jest dostępne dla tego konta/modelu – oceny opierają się na wiedzy modelu, sprawdzaj świeże wydarzenia ostrożniej.");
+          if (feat === "webSearch") banner(esc(t("err.noSearch")));
           continue;
         }
         throw e;
@@ -310,7 +328,7 @@ async function runCheck({ force = false, manualText = null } = {}) {
     }
     renderSummary();
     if (!state.disabled.has("webSearch") && $("banner").classList.contains("error")) banner(null);
-    setStatus(claims.length ? `Nowe: ${claims.length} · łącznie ${state.claims.length}` : "Brak nowych twierdzeń do sprawdzenia");
+    setStatus(claims.length ? t("status.new", { n: claims.length, total: state.claims.length }) : t("status.none"));
   } catch (e) {
     fresh?.forEach((s) => (s.checked = false)); // spróbujemy przy następnej okazji
     handleError(e);
@@ -324,22 +342,20 @@ async function runCheck({ force = false, manualText = null } = {}) {
 function handleError(e) {
   console.error(e);
   const code = e.code || "";
-  if (code === "NEED_LOGIN") {
-    banner(`${esc(e.message)} <a href="#" data-open-settings>Otwórz ustawienia</a>`, "error");
-  } else if (code === "NEED_KEY") {
-    banner(`${esc(e.message)} <a href="#" data-open-settings>Otwórz ustawienia</a>`, "error");
+  if (code === "NEED_LOGIN" || code === "NEED_KEY") {
+    banner(esc(e.message) + openSettingsLink(), "error");
   } else if (code === "subscription_sharing_usage_limit_exceeded") {
     state.pausedUntil = Date.now() + 10 * 60_000;
-    banner('Osiągnięto limit użycia planu ChatGPT dla tej aplikacji. Sprawdzanie wstrzymane na 10 min. <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener">Limity w ChatGPT</a>', "error");
+    banner(`${esc(t("err.limit"))} <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener">${t("err.limitLink")}</a>`, "error");
   } else if (["subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable"].includes(code) || e.status >= 500) {
     state.pausedUntil = Date.now() + 60_000;
-    banner("Serwis chwilowo niedostępny – ponowię za minutę.");
+    banner(esc(t("err.unavailable")));
   } else if (e.status === 401 || code === "subscription_sharing_invalid_user") {
-    banner(`Autoryzacja odrzucona (${esc(code || e.status)}). Zaloguj się ponownie lub sprawdź klucz. <a href="#" data-open-settings>Ustawienia</a>`, "error");
+    banner(esc(t("err.auth", { code: code || e.status })) + openSettingsLink("err.settings"), "error");
   } else {
-    banner(`Błąd: ${esc(e.message)}${code ? ` <span class="muted">(${esc(code)})</span>` : ""}`, "error");
+    banner(`${esc(t("err.generic", { msg: e.message }))}${code ? ` <span class="muted">(${esc(code)})</span>` : ""}`, "error");
   }
-  setStatus("Błąd – szczegóły powyżej", "");
+  setStatus(t("status.error"), "");
 }
 
 // ---------- start / stop ----------
@@ -354,7 +370,7 @@ async function start() {
     onError: (e) => {
       if (e.code === "MIC_PERMISSION") {
         stop();
-        banner('Chrome potrzebuje zgody na mikrofon dla wtyczki. Otworzyłem kartę z prośbą o dostęp – zezwól i kliknij Start ponownie.', "error");
+        banner(esc(t("err.micPermission")), "error");
         chrome.tabs.create({ url: chrome.runtime.getURL("mic-permission.html") });
       } else handleError(e);
     },
@@ -364,37 +380,37 @@ async function start() {
       const have = await getDownloaded();
       const m = getModel(S.localModel);
       if (!m || !have[m.id]) {
-        banner('Pobierz model mowy w ustawieniach (Modele lokalne) – wystarczy raz. <a href="#" data-open-settings>Otwórz ustawienia</a>', "error");
+        banner(esc(t("err.needModel")) + openSettingsLink(), "error");
         return;
       }
-      if (m.lang === "en" && S.language === "pl") banner(`Model ${esc(m.name)} rozumie tylko angielski, a język rozmowy to polski – zmień model w ustawieniach.`);
+      if (m.lang === "en" && S.language === "pl") banner(esc(t("err.enModelPl", { name: m.name })));
       state.transcriber = new LocalTranscriber({
         ...common, modelId: m.id, device: have[m.id].device || DEVICE, chunkSec: S.chunkSec,
         onLatency: ({ audioSec, ms, backlog }) => {
-          if (backlog >= 3) banner(`Komputer nie nadąża z transkrypcją (${(ms / 1000).toFixed(1)} s na ${audioSec.toFixed(0)} s nagrania). Wybierz lżejszy model.`);
+          if (backlog >= 3) banner(esc(t("err.slow", { ms: (ms / 1000).toFixed(1), sec: audioSec.toFixed(0) })));
         },
       });
       if (S.src === "tab") {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab) throw new Error("Nie znaleziono aktywnej karty.");
+        if (!tab) throw new Error(t("err.noActiveTab"));
         await state.transcriber.start({ tabId: tab.id });
       } else {
         await state.transcriber.start();
       }
     } else if (S.src === "tab" && S.engine === "openai") {
       if (!S.apiKey) {
-        banner('Transkrypcja dźwięku z karty wymaga klucza API OpenAI. <a href="#" data-open-settings>Dodaj klucz</a> albo przełącz na „Mikrofon” (darmowe).', "error");
+        banner(`${esc(t("err.needKeyTab"))}${openSettingsLink("err.addKey")} ${esc(t("err.orMic"))}`, "error");
         return;
       }
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab) throw new Error("Nie znaleziono aktywnej karty.");
+      if (!tab) throw new Error(t("err.noActiveTab"));
       state.transcriber = new TabTranscriber({ ...common, apiKey: S.apiKey, model: S.sttModel, chunkSec: S.chunkSec });
       await state.transcriber.start(tab.id);
     } else if (S.src === "tab") {
-      banner("Rozpoznawanie mowy wbudowane w Chrome działa tylko z mikrofonem. Wybierz lokalny model albo OpenAI w ustawieniach.", "error");
+      banner(esc(t("err.chromeMicOnly")), "error");
       return;
     } else if (S.engine === "openai") {
-      banner("Tryb OpenAI obsługuje na razie tylko dźwięk karty. Dla mikrofonu wybierz lokalny model.", "error");
+      banner(esc(t("err.openaiTabOnly")), "error");
       return;
     } else {
       state.transcriber = new MicTranscriber({ ...common, onInterim: (t) => ($("interim").textContent = t) });
@@ -403,19 +419,19 @@ async function start() {
   } catch (e) {
     state.transcriber = null;
     if (e.name === "NotAllowedError" && S.src === "mic") {
-      banner("Chrome potrzebuje zgody na mikrofon dla wtyczki. Otworzyłem kartę z prośbą o dostęp – zezwól i kliknij Start ponownie.", "error");
+      banner(esc(t("err.micPermission")), "error");
       chrome.tabs.create({ url: chrome.runtime.getURL("mic-permission.html") });
       return;
     }
     let msg = e.message;
     if (e.name === "NotAllowedError" && S.src === "tab") {
-      msg = "Nie wybrano karty do nagrania. Kliknij Start i wskaż kartę z rozmową – albo najpierw kliknij ikonę Fact Checkera na pasku, będąc na tej karcie (wtedy okno wyboru się nie pojawi).";
+      msg = t("err.noTabPicked");
     }
     banner(esc(msg), "error");
     return;
   }
   state.running = true;
-  $("toggle").textContent = "Stop";
+  $("toggle").textContent = t("btn.stop");
   $("toggle").classList.add("stop");
   $("liveDot").className = "dot live";
   state.timer = setInterval(() => runCheck(), S.intervalSec * 1000);
@@ -427,7 +443,7 @@ function stop() {
   state.transcriber?.stop();
   state.transcriber = null;
   $("interim").textContent = "";
-  $("toggle").textContent = "Start";
+  $("toggle").textContent = t("btn.start");
   $("toggle").classList.remove("stop");
   $("liveDot").className = "dot";
   runCheck({ force: true }); // dokończ to, co zostało
@@ -435,18 +451,18 @@ function stop() {
 
 // ---------- eksport ----------
 function exportMarkdown() {
-  const lines = [`# Fact-checking – ${new Date().toLocaleString("pl-PL")}`, ""];
+  const lines = [`# ${t("export.title", { date: new Date().toLocaleString(locale()) })}`, ""];
   for (const c of state.claims) {
-    lines.push(`## ${VERDICTS[c.verdict].label}: ${c.claim}`, "");
+    lines.push(`## ${verdictLabel(c.verdict)}: ${c.claim}`, "");
     if (c.quote) lines.push(`> ${c.speaker ? c.speaker + ": " : ""}${c.quote}`, "");
     lines.push(c.explanation, "");
-    if (c.evidence) lines.push(`**Co potwierdza:** ${c.evidence}`, "");
-    if (c.counter_evidence) lines.push(`**Przeciwne dane / kontekst:** ${c.counter_evidence}`, "");
-    if (c.missing_data) lines.push(`**Czego brakuje:** ${c.missing_data}`, "");
+    if (c.evidence) lines.push(`**${t("card.evidence")}:** ${c.evidence}`, "");
+    if (c.counter_evidence) lines.push(`**${t("card.counter")}:** ${c.counter_evidence}`, "");
+    if (c.missing_data) lines.push(`**${t("card.missing")}:** ${c.missing_data}`, "");
     for (const s of c.sources) lines.push(`- [${s.title || s.url}](${s.url})`);
     lines.push("");
   }
-  lines.push("---", "", "## Transkrypcja", "", state.segments.map((s) => s.text).join(" "));
+  lines.push("---", "", `## ${t("export.transcript")}`, "", state.segments.map((s) => s.text).join(" "));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/markdown" }));
   a.download = `fact-check-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.md`;
@@ -497,36 +513,51 @@ $("clear").addEventListener("click", () => {
   renderTranscript(); renderSummary(); banner(null);
 });
 $("signIn").addEventListener("click", async () => {
-  $("account").textContent = "Otwieram logowanie ChatGPT w nowej karcie…";
+  $("account").textContent = t("acc.opening");
   const r = await bg({ type: "signIn" });
-  if (!r?.ok) $("account").textContent = r?.error || "Nie udało się rozpocząć logowania.";
+  if (!r?.ok) $("account").textContent = r?.error || t("acc.startFailed");
 });
 $("signOut").addEventListener("click", async () => { await bg({ type: "signOut" }); refreshAccount(); });
 $("loadModels").addEventListener("click", () => tryLoadModels(false));
 document.querySelectorAll("input[name=provider]").forEach((r) => r.addEventListener("change", () => tryLoadModels(true)));
 $("settingsForm").addEventListener("submit", async (e) => {
   if (e.submitter?.value !== "save") return;
+  const prevLang = getLang();
   readSettingsForm();
   await saveSettings();
   banner(null);
+  if (setLang(resolveLang(S.uiLang)) !== prevLang) localize(true);
 });
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "tab-invoked") {
     if (!state.running) {
       banner(null);
-      setStatus(`Gotowy do nagrania: ${msg.title || "bieżąca karta"}`);
+      setStatus(t("status.readyTab", { title: msg.title || t("status.currentTab") }));
     }
     return;
   }
   if (msg?.type !== "auth-changed") return;
   refreshAccount();
-  if (msg.ok) { tryLoadModels(true); banner(null); } else banner(`Logowanie: ${esc(msg.msg)}`, "error");
+  if (msg.ok) { tryLoadModels(true); banner(null); } else banner(esc(t("err.signIn", { msg: msg.msg })), "error");
 });
 
+// Język interfejsu: z ustawień albo z przeglądarki.
+function localize(rerender = false) {
+  applyI18n();
+  $("settingsTitle").textContent = t("app.settingsVersion", { v: chrome.runtime.getManifest().version });
+  $("toggle").textContent = t(state.running ? "btn.stop" : "btn.start");
+  if (!state.running && !state.busy) setStatus(t("app.ready"));
+  if (rerender) {
+    rerenderCards();
+    if ($("settings").open) { renderModels(); refreshAccount(); }
+  }
+}
+
 await loadSettings();
-document.querySelector("#settings h2").textContent = `Ustawienia · wersja ${chrome.runtime.getManifest().version}`;
+setLang(resolveLang(S.uiLang));
+localize();
 DEVICE = await detectDevice();
 if (S.provider === "chatgpt") {
   const acc = await refreshAccount().catch(() => null);
-  if (!acc && !S.apiKey) banner('Zaloguj się przez ChatGPT albo podaj klucz API, żeby zacząć. <a href="#" data-open-settings>Ustawienia</a>');
+  if (!acc && !S.apiKey) banner(esc(t("err.welcome")) + openSettingsLink("err.settings"));
 }

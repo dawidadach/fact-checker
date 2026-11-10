@@ -1,0 +1,5 @@
+{
+  "extName": { "message": "Fact Checker – live fact-checking" },
+  "extDescription": { "message": "Listens to a conversation in a tab (interview, debate, podcast) and fact-checks claims live in the side panel." },
+  "actionTitle": { "message": "Open Fact Checker" }
+}
