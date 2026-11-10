@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fact Checker</title>
+<link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="dot" id="liveDot" aria-hidden="true"></span>
+    <strong>Fact Checker</strong>
+    <span class="status" id="status">Gotowy</span>
+  </div>
+  <button class="icon" id="openSettings" title="Ustawienia" aria-label="Ustawienia">⚙</button>
+</header>
+
+<section class="controls">
+  <div class="seg" role="radiogroup" aria-label="Źródło dźwięku">
+    <label><input type="radio" name="src" value="tab" checked> Dźwięk karty</label>
+    <label><input type="radio" name="src" value="mic"> Mikrofon</label>
+  </div>
+  <button class="primary" id="toggle">Start</button>
+</section>
+
+<div class="banner" id="banner" hidden></div>
+
+<section class="summary" id="summary" hidden></section>
+
+<section class="feed" id="feed" aria-live="polite">
+  <div class="empty" id="empty">
+    <p><strong>Włącz wywiad, debatę albo podcast</strong>, kliknij ikonę Fact Checkera na pasku <em>będąc na tej karcie</em>, a potem <em>Start</em>.</p>
+    <p>Co ok. 30 s panel wyłapie twierdzenia, które da się sprawdzić (liczby, badania, wydarzenia, cytaty) i pokaże werdykt ze źródłami.</p>
+  </div>
+</section>
+
+<details class="transcript" id="transcriptBox">
+  <summary>Transkrypcja <span class="muted" id="wordCount"></span></summary>
+  <div class="tx" id="transcript"></div>
+  <div class="tx interim" id="interim"></div>
+  <div class="row">
+    <button id="checkNow">Sprawdź teraz</button>
+    <button id="exportMd">Eksport (.md)</button>
+    <button id="clear">Wyczyść</button>
+  </div>
+  <label class="manual">Albo wklej / wpisz tekst do sprawdzenia:
+    <textarea id="manualText" rows="3" placeholder="np. „Bezrobocie w Polsce jest najniższe w UE”"></textarea>
+  </label>
+  <button id="manualCheck">Sprawdź wpisany tekst</button>
+</details>
+
+<dialog id="settings">
+  <form method="dialog" id="settingsForm">
+    <h2>Ustawienia</h2>
+
+    <fieldset>
+      <legend>Model do sprawdzania faktów</legend>
+      <label class="opt"><input type="radio" name="provider" value="chatgpt"> Plan ChatGPT (Plus/Pro) – bez dodatkowych opłat</label>
+      <div class="sub" id="chatgptBox">
+        <div id="account" class="muted">Niezalogowano</div>
+        <button type="button" class="chatgpt" id="signIn">Continue with ChatGPT</button>
+        <button type="button" id="signOut" hidden>Wyloguj</button>
+      </div>
+      <label class="opt"><input type="radio" name="provider" value="apikey"> Klucz API OpenAI (płatne za użycie)</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Klucz API OpenAI</legend>
+      <input type="password" id="apiKey" autocomplete="off" placeholder="sk-…">
+      <p class="hint">Potrzebny tylko w trybach „Klucz API” i „OpenAI” do transkrypcji. Zapisywany tylko w tej przeglądarce.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Model</legend>
+      <div class="row">
+        <select id="model"><option value="">— najpierw zaloguj się lub podaj klucz —</option></select>
+        <button type="button" id="loadModels">Odśwież</button>
+      </div>
+      <label class="check"><input type="checkbox" id="webSearch"> Wyszukiwanie w sieci (zalecane – świeże wydarzenia i źródła)</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Zamiana mowy na tekst</legend>
+      <label class="opt"><input type="radio" name="engine" value="local"> Lokalny model na tym komputerze – darmowe, nic nie wychodzi do sieci</label>
+      <label class="opt"><input type="radio" name="engine" value="openai"> OpenAI (klucz API, ok. 0,70 zł / godz.)</label>
+      <label class="opt"><input type="radio" name="engine" value="chrome"> Wbudowane w Chrome (tylko mikrofon, słabsza jakość)</label>
+    </fieldset>
+
+    <fieldset id="modelsBox">
+      <legend>Modele lokalne</legend>
+      <p class="hint" id="deviceInfo">Sprawdzam kartę graficzną…</p>
+      <div id="modelList" class="models"></div>
+      <p class="hint" id="storageInfo"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Rytm i język</legend>
+      <label>Język rozmowy
+        <select id="language">
+          <option value="pl">polski</option>
+          <option value="en">angielski</option>
+        </select>
+      </label>
+      <label>Sprawdzaj fakty co (s) <input type="number" id="intervalSec" min="10" max="300" step="5"></label>
+      <label>Długość kawałka audio (s) <input type="number" id="chunkSec" min="5" max="25" step="1"></label>
+      <label>Model transkrypcji OpenAI <input id="sttModel" placeholder="gpt-4o-mini-transcribe"></label>
+    </fieldset>
+
+    <div class="row end">
+      <button value="cancel">Anuluj</button>
+      <button class="primary" id="saveSettings" value="save">Zapisz</button>
+    </div>
+  </form>
+</dialog>
+
+<template id="cardTpl">
+  <article class="card">
+    <div class="card-head">
+      <span class="pill"></span>
+      <span class="conf muted"></span>
+      <time class="muted"></time>
+    </div>
+    <blockquote class="quote"></blockquote>
+    <p class="claim"></p>
+    <p class="expl"></p>
+    <dl class="more"></dl>
+    <ul class="sources"></ul>
+  </article>
+</template>
+
+<script type="module" src="sidepanel.js"></script>
+</body>
+</html>

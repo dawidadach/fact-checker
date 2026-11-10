@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Fact Checker na żywo",
+  "short_name": "Fact Checker",
+  "version": "0.3.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwz2ktjWlVMrBydDzpdxVkdnR4qmI9w5zcDhZhKdfOX1QhU3xDyI/2Snr0NnKvrZA5Ln+BS6rDq4oYpz6g6Qrwk/6b60nSLs4tm/5jgLbmI+FRfCxNUYB0GlL9Gux60EgCLvx+qlg1d3f5owZtfTmAQoNDBNZxWgeUz7mU++VSnTHSjcJDaITogtVKWzKWpBs1f4lZJTxIJZULytzoIOSCk5fUGhnVTZGsOskxZXHr6Nng7PQNKqN/xbQLS0BGlP6IZt2yLOmx6VCNwdFlI57ZZRXHeBPdpi9VPUBeLo2ONgnmc3ceFJReHMDOcpcdOS80/ikQK6r95hty8DQXsEa9QIDAQAB",
+  "description": "Słucha rozmowy w karcie (wywiad, debata, podcast) i na bieżąco sprawdza wypowiadane fakty w panelu bocznym.",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_title": "Otwórz Fact Checker",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "activeTab",
+    "sidePanel",
+    "tabCapture",
+    "storage",
+    "tabs",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "https://auth.openai.com/*",
+    "https://api.openai.com/*",
+    "http://127.0.0.1/*",
+    "https://huggingface.co/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}
