@@ -16,9 +16,7 @@
 3. Kliknij **Załaduj rozpakowane** i wskaż rozpakowany folder `fact-checker-main`.
 4. Kliknij ikonę wtyczki na karcie z filmem lub podcastem → ⚙ → pobierz model mowy i **Continue with ChatGPT** → **Start**.
 
-<img src="docs/panel.png" width="340" alt="Side panel with verdicts"> <img src="docs/modele.png" width="300" alt="Local speech models">
-
-<sub>The screenshots show sample responses from a test run, not real fact-checks.</sub>
+![Fact Checker checking a YouTube debate live](docs/demo-en-vaccines.webp)
 
 ---
 
@@ -35,6 +33,8 @@ events, quotes, laws, historical facts) and shows a verdict for each:
 Each card also shows the exact quote, a short explanation, what supports the claim, **contradicting studies or data**,
 **what is missing** to settle it, and links to sources. When a speaker cites research, the model checks whether such research
 exists, what it actually says and whether other studies reach the opposite conclusion.
+
+![Fact Checker on a debate with Charlie Kirk: verdict summary and “Misleading” cards with sources](docs/demo-en-college.webp)
 
 ### How it works
 
@@ -149,14 +149,16 @@ hallucination filter.
 
 ### Status
 
-Tested in Chromium with OpenAI's servers stubbed: sign-in flow, model list, fact-checking, automatic fallback when web search is
-rejected. All six local models were downloaded and run on real speech, and capturing a tab through the share window was tested.
-**Not yet tested:** a real sign-in with a ChatGPT Plus account, direct tab capture after clicking the icon, and the models on a GPU
-(WebGPU). If something fails, right-click the panel → **Inspect** and check the Console.
+Used on real YouTube debates in Polish and English (see the screenshots): ChatGPT sign-in, web search with sources, tab audio
+and local speech models. Automated tests run in Chromium with OpenAI's servers stubbed (sign-in flow, model list, fact-checking,
+fallback when web search is rejected), and all six local models were downloaded and run on recorded speech.
+If something fails, right-click the panel → **Inspect** and check the Console.
 
 ---
 
 ## Polski
+
+![Fact Checker sprawdza na żywo debatę o Trybunale Konstytucyjnym](docs/demo-pl-trybunal.webp)
 
 Wtyczka Chrome, która słucha rozmowy odtwarzanej w karcie (wywiad, debata, podcast, transmisja) i na bieżąco sprawdza fakty
 w panelu bocznym.
@@ -169,6 +171,8 @@ wydarzenia, cytaty, przepisy, fakty historyczne), i pokazuje werdykt:
 Każda karta zawiera dosłowny cytat, krótkie wyjaśnienie, co potwierdza twierdzenie, **przeciwne badania lub dane**,
 **czego brakuje** do rozstrzygnięcia i linki do źródeł. Gdy ktoś powołuje się na badania, model sprawdza, czy takie badania
 istnieją, co naprawdę mówią i czy są badania o przeciwnych wnioskach.
+
+![Fact Checker na debacie o energetyce: podsumowanie werdyktów i karty ze źródłami](docs/demo-pl-energetyka.webp)
 
 ### Jak to działa
 
@@ -258,8 +262,8 @@ node --test tests/*.test.mjs
 
 ### Stan projektu
 
-Przetestowane w Chromium z podstawionymi serwerami OpenAI: logowanie, lista modeli, sprawdzanie faktów, automatyczne wyłączenie
-wyszukiwania po odmowie. Wszystkie sześć lokalnych modeli zostało pobranych i uruchomionych na prawdziwej mowie, sprawdzone też
-nagrywanie karty przez okno „Udostępnij kartę”. **Jeszcze nie sprawdzone:** prawdziwe logowanie na koncie ChatGPT Plus, bezpośrednie
-nagrywanie karty po kliknięciu ikony i modele na karcie graficznej (WebGPU). Jeśli coś nie działa, kliknij prawym przyciskiem
-w panelu → **Zbadaj** i sprawdź zakładkę Console.
+Używana na prawdziwych debatach na YouTube po polsku i po angielsku (zobacz zrzuty ekranu): logowanie przez ChatGPT, wyszukiwanie
+w sieci ze źródłami, dźwięk karty i lokalne modele mowy. Testy automatyczne działają w Chromium z podstawionymi serwerami OpenAI
+(logowanie, lista modeli, sprawdzanie faktów, wyłączenie wyszukiwania po odmowie), a wszystkie sześć lokalnych modeli zostało
+pobranych i uruchomionych na nagraniach mowy. Jeśli coś nie działa, kliknij prawym przyciskiem w panelu → **Zbadaj** i sprawdź
+zakładkę Console.

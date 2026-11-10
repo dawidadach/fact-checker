@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseSSE, extractCitations } from "../lib/llm.js";
-import { buildRequest, parseResult, isDuplicate, unsupportedFeature } from "../lib/factcheck.js";
+import { buildRequest, parseResult, isDuplicate, unsupportedFeature, stripLinks } from "../lib/factcheck.js";
 import { b64url, decodeJwt, pkceChallenge, validateIdToken } from "../lib/auth.js";
 
 test("parseSSE dzieli zdarzenia i zostawia niedokończony fragment", () => {
@@ -74,4 +74,16 @@ test("validateIdToken: poprawny token przechodzi, zły nonce/aud/podpis nie", as
   const other = await makeToken(p);
   await assert.rejects(validateIdToken(jwt, "oaiapp_1", "n1", { jwks: other.jwks, now }), /signature/);
   assert.equal(decodeJwt(jwt).payload.email, "a@b.c");
+});
+
+test("linki wklejone przez wyszukiwarkę trafiają do źródeł, a nie do tekstu", () => {
+  const expl = "TK 3 grudnia 2015 r. potwierdził konstytucyjność. ([trybunal.gov.pl](https://trybunal.gov.pl/a/Komunikat.pdf?utm_source=openai))";
+  const txt = JSON.stringify({ claims: [{ quote: "q", speaker: "", claim: "c", category: "inne", verdict: "prawda", confidence: "wysoka",
+    explanation: expl, evidence: "Raport (https://x.pl/r?utm_source=openai) potwierdza.", counter_evidence: "", missing_data: "",
+    sources: [{ title: "TK", url: "https://trybunal.gov.pl/a/Komunikat.pdf" }] }] });
+  const [c] = parseResult(txt);
+  assert.equal(c.explanation, "TK 3 grudnia 2015 r. potwierdził konstytucyjność.");
+  assert.equal(c.evidence, "Raport potwierdza.");
+  assert.deepEqual(c.sources.map((s) => s.url), ["https://trybunal.gov.pl/a/Komunikat.pdf", "https://x.pl/r"]);
+  assert.equal(stripLinks("Zob. [GUS](https://stat.gov.pl) dane."), "Zob. GUS dane.");
 });

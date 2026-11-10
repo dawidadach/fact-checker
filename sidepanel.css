@@ -55,7 +55,7 @@ button.chatgpt { background: #000; color: #fff; border-color: #000; font-weight:
 .empty p { margin: 0 0 6px; }
 .empty strong { color: var(--fg); }
 
-.card { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--line)); border-radius: 10px; padding: 10px 12px; }
+.card { overflow-wrap: anywhere; min-width: 0; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--line)); border-radius: 10px; padding: 10px 12px; }
 .card[data-tone="good"] { --tone: var(--good); }
 .card[data-tone="warn"] { --tone: var(--warn); }
 .card[data-tone="bad"] { --tone: var(--bad); }

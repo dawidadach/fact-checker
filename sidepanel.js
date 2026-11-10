@@ -113,7 +113,10 @@ async function renderModels() {
         get.onclick = () => downloadModel(m.id);
         act.append(get);
       }
-      row.querySelector("input").onchange = () => { list.querySelectorAll(".model").forEach((r) => r.classList.toggle("active", r === row)); };
+      row.querySelector("input").onchange = () => {
+        list.querySelectorAll(".model").forEach((r) => r.classList.toggle("active", r === row));
+        if (!m.multilingual) $("language").value = m.lang; // model tylko angielski → rozmowa po angielsku
+      };
       list.append(row);
     }
   }
@@ -383,9 +386,9 @@ async function start() {
         banner(esc(t("err.needModel")) + openSettingsLink(), "error");
         return;
       }
-      if (m.lang === "en" && S.language === "pl") banner(esc(t("err.enModelPl", { name: m.name })));
       state.transcriber = new LocalTranscriber({
         ...common, modelId: m.id, device: have[m.id].device || DEVICE, chunkSec: S.chunkSec,
+        language: m.multilingual ? S.language : m.lang, // model tylko angielski = rozmowa po angielsku
         onLatency: ({ audioSec, ms, backlog }) => {
           if (backlog >= 3) banner(esc(t("err.slow", { ms: (ms / 1000).toFixed(1), sec: audioSec.toFixed(0) })));
         },
