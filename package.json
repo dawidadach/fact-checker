@@ -1,0 +1,13 @@
+{
+  "name": "fact-checker",
+  "private": true,
+  "type": "module",
+  "description": "Live fact-checking browser extension (Chrome, Opera)",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "build:chrome": "node scripts/build.mjs chrome",
+    "build:opera": "node scripts/build.mjs opera",
+    "build:edge": "node scripts/build.mjs edge"
+  }
+}

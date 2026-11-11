@@ -1,0 +1,6 @@
+/* Podświetlenia werdyktów na stronie (CSS Custom Highlight API – nie zmienia treści strony). */
+::highlight(fc-good) { background-color: rgba(19, 122, 75, .18); text-decoration: underline 2px rgba(19, 122, 75, .85); }
+::highlight(fc-warn) { background-color: rgba(214, 150, 0, .24); text-decoration: underline 2px rgba(170, 110, 0, .9); }
+::highlight(fc-bad) { background-color: rgba(220, 38, 38, .18); text-decoration: underline wavy rgba(190, 30, 30, .9); }
+::highlight(fc-muted) { background-color: rgba(100, 108, 118, .16); text-decoration: underline dotted rgba(100, 108, 118, .9); }
+::highlight(fc-flash) { background-color: rgba(31, 79, 209, .35); }

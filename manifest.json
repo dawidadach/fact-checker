@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "short_name": "Fact Checker",
-  "version": "0.4.1",
+  "version": "0.5.4",
   "default_locale": "en",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwz2ktjWlVMrBydDzpdxVkdnR4qmI9w5zcDhZhKdfOX1QhU3xDyI/2Snr0NnKvrZA5Ln+BS6rDq4oYpz6g6Qrwk/6b60nSLs4tm/5jgLbmI+FRfCxNUYB0GlL9Gux60EgCLvx+qlg1d3f5owZtfTmAQoNDBNZxWgeUz7mU++VSnTHSjcJDaITogtVKWzKWpBs1f4lZJTxIJZULytzoIOSCk5fUGhnVTZGsOskxZXHr6Nng7PQNKqN/xbQLS0BGlP6IZt2yLOmx6VCNwdFlI57ZZRXHeBPdpi9VPUBeLo2ONgnmc3ceFJReHMDOcpcdOS80/ikQK6r95hty8DQXsEa9QIDAQAB",
   "description": "__MSG_extDescription__",
@@ -15,14 +15,14 @@
       "48": "icons/icon48.png"
     }
   },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-  "side_panel": {
-    "default_path": "sidepanel.html"
   },
   "background": {
     "service_worker": "background.js",
@@ -34,15 +34,37 @@
     "tabCapture",
     "storage",
     "tabs",
-    "webRequest"
+    "webRequest",
+    "downloads",
+    "unlimitedStorage",
+    "contextMenus",
+    "scripting"
   ],
   "host_permissions": [
     "https://auth.openai.com/*",
     "https://api.openai.com/*",
     "http://127.0.0.1/*",
-    "https://huggingface.co/*"
+    "https://huggingface.co/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.anthropic.com/*",
+    "https://openrouter.ai/*",
+    "https://factchecktools.googleapis.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "version_name": "0.5.4",
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*",
+    "<all_urls>"
+  ],
+  "commands": {
+    "fact-check": {
+      "suggested_key": {
+        "default": "Alt+Shift+F"
+      },
+      "description": "__MSG_cmdFactCheck__"
+    }
   }
 }

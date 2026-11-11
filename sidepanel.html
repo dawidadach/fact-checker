@@ -13,35 +13,77 @@
     <strong>Fact Checker</strong>
     <span class="status" id="status" data-i18n="app.ready"></span>
   </div>
-  <button class="icon" id="openSettings" data-i18n-title="app.settings" data-i18n-aria="app.settings">⚙</button>
+  <div class="top-actions">
+    <button class="icon" id="openHistory" data-i18n-title="hist.title" data-i18n-aria="hist.title">🕘</button>
+    <button class="icon" id="openSettings" data-i18n-title="app.settings" data-i18n-aria="app.settings">⚙</button>
+  </div>
+  <div class="activity" id="activity" role="status" aria-live="polite" hidden>
+    <div class="act-stripe"></div>
+    <div class="act-row">
+      <span class="act-dot" aria-hidden="true"></span>
+      <span id="actText"></span>
+      <span id="actTime"></span>
+      <button type="button" id="actCancel" data-i18n="act.cancel"></button>
+    </div>
+  </div>
 </header>
 
 <section class="controls">
-  <div class="seg" role="radiogroup" data-i18n-aria="src.label">
-    <label><input type="radio" name="src" value="tab" checked> <span data-i18n="src.tab"></span></label>
-    <label><input type="radio" name="src" value="mic"> <span data-i18n="src.mic"></span></label>
+  <div class="src-pick">
+    <span class="muted" data-i18n="src.listenLabel"></span>
+    <div class="seg" id="srcSeg" role="radiogroup" data-i18n-aria="src.label">
+      <label><input type="radio" name="src" value="tab" checked><span class="seg-dot" aria-hidden="true"></span><span aria-hidden="true">🔊</span><span data-i18n="src.tab"></span></label>
+      <label><input type="radio" name="src" value="mic"><span class="seg-dot" aria-hidden="true"></span><span aria-hidden="true">🎙️</span><span data-i18n="src.mic"></span></label>
+    </div>
   </div>
   <button class="primary" id="toggle" data-i18n="btn.start"></button>
 </section>
 
+<section class="speaker-bar" id="speakerBar" hidden>
+  <span class="muted" data-i18n="spk.label" data-i18n-title="spk.hint"></span>
+  <div class="spk-chips" id="spkChips"></div>
+  <input id="spkInput" list="spkList" autocomplete="off" data-i18n-placeholder="spk.placeholder" data-i18n-aria="spk.placeholder">
+  <datalist id="spkList"></datalist>
+</section>
+
+<section class="page-tools">
+  <span class="muted" data-i18n="page.label"></span>
+  <button id="pageArticle" data-i18n="page.article" data-i18n-title="page.articleHint"></button>
+  <button id="pagePick" data-i18n="page.pick" data-i18n-title="page.pickHint"></button>
+  <button id="pageSelection" data-i18n="page.selection" data-i18n-title="page.selectionHint"></button>
+  <button id="pageArea" data-i18n="page.area" data-i18n-title="page.areaHint"></button>
+</section>
+
+<section class="queue" id="queue" hidden>
+  <div class="q-head"><strong id="qTitle"></strong> <a href="#" id="qClear" data-i18n="queue.clear"></a></div>
+  <ol id="qList"></ol>
+</section>
+
 <div class="banner" id="banner" hidden></div>
 
-<section class="summary" id="summary" hidden></section>
+<section class="summary" id="summary" hidden>
+  <div id="sumPills"></div>
+  <button type="button" class="filter" id="onlyProblems" aria-pressed="false"></button>
+</section>
+<div class="costline muted" id="costLine" hidden></div>
 
 <section class="feed" id="feed" aria-live="polite">
   <div class="empty" id="empty">
     <p data-i18n-html="empty.p1"></p>
     <p data-i18n="empty.p2"></p>
+    <p data-i18n="empty.p3"></p>
+    <p class="last" id="lastSession" hidden><span data-i18n="hist.last"></span> <a href="#" id="lastSessionLink"></a></p>
   </div>
 </section>
 
 <details class="transcript" id="transcriptBox">
-  <summary><span data-i18n="tx.title"></span> <span class="muted" id="wordCount"></span></summary>
+  <summary><span id="txTitle"></span> <span class="muted" id="wordCount"></span></summary>
   <div class="tx" id="transcript"></div>
   <div class="tx interim" id="interim"></div>
   <div class="row">
     <button id="checkNow" data-i18n="tx.checkNow"></button>
     <button id="exportMd" data-i18n="tx.export"></button>
+    <button id="openReport" data-i18n="tx.report" data-i18n-title="tx.reportHint"></button>
     <button id="clear" data-i18n="tx.clear"></button>
   </div>
   <label class="manual"><span data-i18n="tx.manualLabel"></span>
@@ -63,12 +105,17 @@
         <button type="button" id="signOut" hidden data-i18n="set.signOut"></button>
       </div>
       <label class="opt"><input type="radio" name="provider" value="apikey"> <span data-i18n="set.providerKey"></span></label>
+      <label class="opt"><input type="radio" name="provider" value="gemini"> <span data-i18n="set.providerGemini"></span></label>
+      <label class="opt"><input type="radio" name="provider" value="anthropic"> <span data-i18n="set.providerAnthropic"></span></label>
+      <label class="opt"><input type="radio" name="provider" value="openrouter"> <span data-i18n="set.providerOpenrouter"></span></label>
     </fieldset>
 
     <fieldset>
-      <legend data-i18n="set.apiKey"></legend>
-      <input type="password" id="apiKey" autocomplete="off" placeholder="sk-…">
-      <p class="hint" data-i18n="set.apiKeyHint"></p>
+      <legend id="apiKeyLegend"></legend>
+      <input type="password" id="apiKey" autocomplete="off">
+      <p class="hint" id="apiKeyHint"></p>
+      <p class="hint key-status" id="keyStatus" hidden></p>
+      <p class="hint" id="providerInfo"></p>
     </fieldset>
 
     <fieldset>
@@ -77,7 +124,38 @@
         <select id="model"></select>
         <button type="button" id="loadModels" data-i18n="set.refresh"></button>
       </div>
+      <p class="hint" id="modelCaps"></p>
       <label class="check"><input type="checkbox" id="webSearch"> <span data-i18n="set.webSearch"></span></label>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="set.mode"></legend>
+      <label class="opt"><input type="radio" name="mode" value="eco"> <span data-i18n="set.modeEco"></span></label>
+      <label class="opt"><input type="radio" name="mode" value="normal"> <span data-i18n="set.modeNormal"></span></label>
+      <label class="opt"><input type="radio" name="mode" value="thorough"> <span data-i18n="set.modeThorough"></span></label>
+      <p class="hint" data-i18n="set.modeHint"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="set.costs"></legend>
+      <p class="hint" id="costToday"></p>
+      <label><span data-i18n="set.dailyLimit"></span> <input type="number" id="dailyLimit" min="0" step="0.1" placeholder="0"></label>
+      <details class="prices">
+        <summary data-i18n="set.priceOwn"></summary>
+        <div class="row">
+          <label><span data-i18n="set.priceIn"></span> <input type="number" id="priceIn" min="0" step="0.01"></label>
+          <label><span data-i18n="set.priceOut"></span> <input type="number" id="priceOut" min="0" step="0.01"></label>
+        </div>
+      </details>
+      <p class="hint" id="priceHint"></p>
+      <p class="hint" data-i18n="set.costHint"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="set.fcApi"></legend>
+      <input type="password" id="fcKey" autocomplete="off" placeholder="AIza…" data-i18n-aria="set.fcApi">
+      <div class="row"><button type="button" id="fcTest" data-i18n="set.fcTest"></button> <span class="hint key-status" id="fcStatus" hidden></span></div>
+      <p class="hint" data-i18n-html="set.fcHint"></p>
     </fieldset>
 
     <fieldset>
@@ -114,6 +192,31 @@
       <label><span data-i18n="set.sttModel"></span> <input id="sttModel" placeholder="gpt-4o-mini-transcribe"></label>
     </fieldset>
 
+    <fieldset>
+      <legend data-i18n="set.saving"></legend>
+      <p class="hint" data-i18n="set.savingHint"></p>
+      <label><span data-i18n="set.sessionGap"></span> <input type="number" id="sessionGap" min="0" max="72" step="1"></label>
+      <label class="check"><input type="checkbox" id="autoExport"> <span data-i18n="set.autoExport"></span></label>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="set.memory"></legend>
+      <label><span data-i18n="set.memoryDays"></span> <input type="number" id="memoryDays" min="0" max="365" step="1"></label>
+      <p class="hint" data-i18n="set.memoryHint"></p>
+      <div class="row"><span class="hint" id="memInfo"></span> <button type="button" id="memClear" class="danger" data-i18n="set.memClear"></button></div>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="set.privacy"></legend>
+      <label class="check"><input type="checkbox" id="maskPeople"> <span data-i18n="set.maskPeople"></span></label>
+      <label class="check"><input type="checkbox" id="rememberKeys"> <span data-i18n="set.rememberKeys"></span></label>
+      <p class="hint" data-i18n="set.keysHint"></p>
+      <div class="row">
+        <button type="button" id="forgetKeys" class="danger" data-i18n="set.forgetKeys"></button>
+        <a href="privacy.html" target="_blank" rel="noopener" data-i18n="set.privacyLink"></a>
+      </div>
+    </fieldset>
+
     <div class="row end">
       <button value="cancel" data-i18n="set.cancel"></button>
       <button class="primary" id="saveSettings" value="save" data-i18n="set.save"></button>
@@ -121,18 +224,101 @@
   </form>
 </dialog>
 
+<dialog id="preview" class="history">
+  <form method="dialog" class="preview">
+    <h2 data-i18n="pv.title"></h2>
+    <p class="pv-src" id="pvSource"></p>
+    <p class="pv-warn" id="pvWarn" hidden></p>
+    <div class="pv-images" id="pvImages" hidden></div>
+    <p class="hint" data-i18n="pv.hint"></p>
+    <textarea id="pvText" rows="14" spellcheck="false"></textarea>
+    <p class="hint" id="pvCount"></p>
+    <div class="row end">
+      <button value="cancel" data-i18n="set.cancel"></button>
+      <button class="primary" value="ok" data-i18n="pv.check"></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="replyDlg" class="history">
+  <form method="dialog" class="reply-form">
+    <h2 data-i18n="rp.title"></h2>
+    <p class="hint" id="rpFor"></p>
+    <div class="seg tones" role="radiogroup" data-i18n-aria="rp.tone">
+      <label><input type="radio" name="tone" value="plain"><span data-i18n="rp.plain"></span></label>
+      <label><input type="radio" name="tone" value="casual"><span data-i18n="rp.casual"></span></label>
+      <label><input type="radio" name="tone" value="x"><span data-i18n="rp.x"></span></label>
+      <label><input type="radio" name="tone" value="orig"><span data-i18n="rp.orig"></span></label>
+    </div>
+    <div class="rp-box">
+      <textarea id="rpText" rows="13" spellcheck="true" data-i18n-aria="rp.title"></textarea>
+      <div class="rp-busy" id="rpBusy" hidden><span class="spinner"></span><span data-i18n="rp.writing"></span></div>
+    </div>
+    <p class="hint rp-count" id="rpCount"></p>
+    <p class="hint rp-note" id="rpNote"></p>
+    <div class="row end">
+      <button type="button" id="rpRegen" data-i18n="rp.regen"></button>
+      <button value="cancel" data-i18n="hist.close"></button>
+      <button type="button" class="primary" id="rpCopy" data-i18n="rp.copy"></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="history" class="history">
+  <div class="hist-head">
+    <h2 data-i18n="hist.title"></h2>
+    <button class="icon" id="closeHistory" data-i18n-aria="hist.close" data-i18n-title="hist.close">✕</button>
+  </div>
+  <input type="search" id="histFilter" data-i18n-placeholder="hist.filter">
+  <p class="hint" id="histInfo"></p>
+  <div id="histList" class="hist-list"></div>
+  <div class="row hist-foot">
+    <button id="exportRatings" data-i18n="fb.export" data-i18n-title="fb.exportHint"></button>
+    <span class="hint" id="ratingsInfo"></span>
+    <button id="histDeleteAll" class="danger" data-i18n="hist.deleteAll"></button>
+  </div>
+</dialog>
+
+<template id="histTpl">
+  <article class="hist-item">
+    <div class="hist-title"></div>
+    <div class="hist-meta muted"></div>
+    <div class="hist-pills"></div>
+    <div class="row">
+      <button class="primary" data-act="open" data-i18n="hist.open"></button>
+      <button data-act="export" data-i18n="hist.export"></button>
+      <button data-act="report" data-i18n="hist.report"></button>
+      <button class="danger" data-act="delete" data-i18n="hist.delete"></button>
+    </div>
+  </article>
+</template>
+
 <template id="cardTpl">
   <article class="card">
     <div class="card-head">
       <span class="pill"></span>
       <span class="conf muted"></span>
       <time class="muted"></time>
+      <button class="goto" type="button" hidden data-i18n="page.show"></button>
     </div>
     <blockquote class="quote"></blockquote>
+    <div class="claim-label"></div>
     <p class="claim"></p>
+    <div class="expl-label"></div>
     <p class="expl"></p>
     <dl class="more"></dl>
     <ul class="sources"></ul>
+    <div class="fc-box" hidden></div>
+    <div class="card-foot">
+      <button type="button" class="fb fb-up" aria-pressed="false">👍</button>
+      <button type="button" class="fb fb-down" aria-pressed="false">👎</button>
+      <span class="fb-note muted" hidden></span>
+      <button type="button" class="copy-reply"></button>
+    </div>
+    <div class="fb-box" hidden>
+      <textarea rows="2" maxlength="1000"></textarea>
+      <button type="button" class="fb-done small"></button>
+    </div>
   </article>
 </template>
 

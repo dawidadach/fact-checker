@@ -1,5 +1,14 @@
 {
-  "extName": { "message": "Fact Checker – live fact-checking" },
-  "extDescription": { "message": "Listens to a conversation in a tab (interview, debate, podcast) and fact-checks claims live in the side panel." },
-  "actionTitle": { "message": "Open Fact Checker" }
+  "extName": {
+    "message": "Fact Checker – live fact-checking"
+  },
+  "extDescription": {
+    "message": "Live fact-checking: of a conversation in a tab (interview, debate, podcast) and of text you point at – an article, a Facebook or X post."
+  },
+  "actionTitle": {
+    "message": "Open Fact Checker"
+  },
+  "cmdFactCheck": {
+    "message": "Fact-check the selection (or pick a post)"
+  }
 }
