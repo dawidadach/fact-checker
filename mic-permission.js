@@ -11,5 +11,7 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => {
   p.textContent = t("mic.ok");
   setTimeout(() => window.close(), 2500);
 }, (e) => {
-  p.textContent = t("mic.denied", { e: e.name });
+  const ua = navigator.userAgent;
+  const scheme = /\bOPR\//.test(ua) ? "opera" : /\bEdg\//.test(ua) ? "edge" : "chrome";
+  p.textContent = t("mic.denied", { e: e.name, url: `${scheme}://settings/content/microphone` });
 });

@@ -1,0 +1,5 @@
+.toolbar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 16px; background: #17191c; color: #fff; font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.toolbar button { font: inherit; padding: 5px 12px; border-radius: 8px; border: 0; background: #fff; color: #17191c; cursor: pointer; }
+.toolbar button:hover { background: #e7e9ec; }
+#msg { opacity: .8; }
+@media print { .toolbar { display: none; } }

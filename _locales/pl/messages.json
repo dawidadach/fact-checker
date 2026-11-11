@@ -1,5 +1,14 @@
 {
-  "extName": { "message": "Fact Checker – sprawdzanie faktów na żywo" },
-  "extDescription": { "message": "Słucha rozmowy w karcie (wywiad, debata, podcast) i na bieżąco sprawdza wypowiadane fakty w panelu bocznym." },
-  "actionTitle": { "message": "Otwórz Fact Checker" }
+  "extName": {
+    "message": "Fact Checker – sprawdzanie faktów na żywo"
+  },
+  "extDescription": {
+    "message": "Sprawdza fakty na żywo: w rozmowie w karcie (wywiad, debata, podcast) oraz w tekście, który wskażesz – artykule, poście na Facebooku czy X."
+  },
+  "actionTitle": {
+    "message": "Otwórz Fact Checker"
+  },
+  "cmdFactCheck": {
+    "message": "Sprawdź fakty w zaznaczeniu (albo wskaż post)"
+  }
 }
