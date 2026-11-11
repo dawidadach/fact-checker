@@ -66,6 +66,8 @@ Each card shows the exact quote and who said it, the claim being checked, a shor
 - Images: the model reads the text, checks fake quotes, misleading charts (truncated axes, cherry-picked ranges), screenshots
   of posts and satire. Reverse image search buttons (Google Lens, TinEye, Yandex) for photos taken out of context.
 
+![A Facebook post with a meme checked in Opera: verdicts marked on the image and explained in the panel, including what is misleading in the graphic (Polish interface)](docs/demo-pl-post-meme.webp)
+
 **Better verdicts**
 - The model is told to prefer **primary sources** (e.g. for Poland: Sejm votes and transcripts, ISAP, GUS, NBP, Eurostat).
 - **Existing fact-checks** (optional, free Google key): articles by fact-checking outlets from the Google Fact Check database are
@@ -73,6 +75,8 @@ Each card shows the exact quote and who said it, the claim being checked, a shor
 - **Verdict memory:** the same text or image (e.g. a meme that keeps circulating) gets its earlier result instantly, at no cost.
   Every image is recognised on its own — a meme checked inside a post is recognised later on its own or in another post — while
   the same meme template with a different caption is not.
+
+![A news article checked in Opera: the card shows the claim, the assessment, what supports it, the context, what is missing and the sources (Polish interface)](docs/demo-pl-article.webp)
 
 **Working with the results**
 - **📋 Copy as reply** – a comment to paste under the post, written in plain language and matched to the post:
@@ -82,6 +86,8 @@ Each card shows the exact quote and who said it, the claim being checked, a shor
 - **Report** – a session (e.g. a debate) as a document: verdict breakdown, speakers table, all verdicts with sources;
   print / save as PDF or download as HTML.
 - Filter **Only problems**, verdict counts per source, Markdown export.
+
+<img src="docs/demo-pl-reply.webp" width="420" alt="Copy as reply: a comment in plain language, matched to the post, in the “Casual” tone (Polish interface)">
 
 **Sessions and history**
 - Everything you check goes into the current session, grouped by source; sessions are saved automatically.
@@ -248,6 +254,8 @@ Karta zawiera dosłowny cytat i to, kto go powiedział, sprawdzane twierdzenie, 
 - Obrazki: model odczytuje tekst, sprawdza fałszywe cytaty, zmanipulowane wykresy (obcięte osie, wybrane zakresy), zrzuty postów
   i satyrę. Przyciski wyszukiwania obrazem (Google Lens, TinEye, Yandex) – na zdjęcia wyrwane z kontekstu.
 
+![Post z memem na Facebooku sprawdzony w Operze: werdykty zaznaczone na obrazku i wyjaśnione w panelu, łącznie z tym, co w grafice wprowadza w błąd](docs/demo-pl-post-meme.webp)
+
 **Lepsze werdykty**
 - Model ma preferować **źródła pierwotne** (np. głosowania i stenogramy Sejmu, ISAP, GUS, NBP, Eurostat).
 - **Gotowe fact-checki** (opcjonalnie, darmowy klucz Google): artykuły redakcji fact-checkingowych z bazy Google Fact Check
@@ -255,6 +263,8 @@ Karta zawiera dosłowny cytat i to, kto go powiedział, sprawdzane twierdzenie, 
 - **Pamięć werdyktów:** ten sam tekst albo obrazek (np. mem, który krąży od tygodni) dostaje wcześniejszy wynik od razu, bez
   kosztów. Każdy obrazek jest rozpoznawany osobno – mem sprawdzony w poście rozpozna się potem sam albo w innym poście – a ten
   sam szablon mema z innym napisem już nie.
+
+![Artykuł z serwisu informacyjnego sprawdzony w Operze: karta pokazuje twierdzenie, ocenę, co je potwierdza, kontekst, czego brakuje i źródła](docs/demo-pl-article.webp)
 
 **Praca z wynikami**
 - **📋 Kopiuj jako odpowiedź** – komentarz do wklejenia pod postem, ludzkim językiem i dopasowany do posta: *Rzeczowo*,
@@ -264,6 +274,8 @@ Karta zawiera dosłowny cytat i to, kto go powiedział, sprawdzane twierdzenie, 
 - **Raport** – sesja (np. debata) jako dokument: rozkład werdyktów, tabela mówców, wszystkie werdykty ze źródłami;
   druk / zapis jako PDF albo pobranie jako HTML.
 - Filtr **Tylko problematyczne**, liczniki werdyktów przy źródłach, eksport do Markdown.
+
+<img src="docs/demo-pl-reply.webp" width="420" alt="Kopiuj jako odpowiedź: komentarz ludzkim językiem, dopasowany do posta, w tonie „Na luzie”">
 
 **Sesje i historia**
 - Wszystko, co sprawdzasz, trafia do bieżącej sesji, z podziałem na źródła; sesje zapisują się automatycznie.
