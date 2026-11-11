@@ -1,20 +1,31 @@
-# Fact Checker — live fact-checking in Chrome
+# Fact Checker — live fact-checking in Chrome, Edge and Opera
 
 **[English](#english) · [Polski](#polski)**
 
 ### Install in 1 minute
 
-1. **[Download ZIP](https://github.com/dawidadach/fact-checker/archive/refs/heads/main.zip)** and unzip it.
-2. Open **`chrome://extensions`** and switch on **Developer mode** (top right).
-3. Click **Load unpacked** and pick the unzipped `fact-checker-main` folder.
-4. Click the extension icon on a tab with a video or podcast → ⚙ → download a speech model and **Continue with ChatGPT** → **Start**.
+1. Download the package for your browser (latest release):
+   **[Chrome](https://github.com/dawidadach/fact-checker/releases/latest/download/fact-checker-chrome.zip)** ·
+   **[Edge](https://github.com/dawidadach/fact-checker/releases/latest/download/fact-checker-edge.zip)** ·
+   **[Opera](https://github.com/dawidadach/fact-checker/releases/latest/download/fact-checker-opera.zip)** — and unzip it.
+2. Open **`chrome://extensions`** / **`edge://extensions`** / **`opera://extensions`** and switch on **Developer mode**.
+3. Click **Load unpacked** and pick the unzipped folder (the one with `manifest.json`).
+4. Click the extension icon → ⚙ → choose who checks the facts (ChatGPT plan, OpenAI, Gemini, Claude or OpenRouter) → **Start**,
+   or point at an article, post or meme with the 📄 / 👆 / ✂ / 🔲 buttons.
 
 ### Instalacja w minutę
 
-1. **[Pobierz ZIP](https://github.com/dawidadach/fact-checker/archive/refs/heads/main.zip)** i rozpakuj.
-2. Wejdź na **`chrome://extensions`** i włącz **Tryb dewelopera** (prawy górny róg).
-3. Kliknij **Załaduj rozpakowane** i wskaż rozpakowany folder `fact-checker-main`.
-4. Kliknij ikonę wtyczki na karcie z filmem lub podcastem → ⚙ → pobierz model mowy i **Continue with ChatGPT** → **Start**.
+1. Pobierz paczkę dla swojej przeglądarki (najnowsze wydanie):
+   **[Chrome](https://github.com/dawidadach/fact-checker/releases/latest/download/fact-checker-chrome.zip)** ·
+   **[Edge](https://github.com/dawidadach/fact-checker/releases/latest/download/fact-checker-edge.zip)** ·
+   **[Opera](https://github.com/dawidadach/fact-checker/releases/latest/download/fact-checker-opera.zip)** — i rozpakuj.
+2. Wejdź na **`chrome://extensions`** / **`edge://extensions`** / **`opera://extensions`** i włącz **Tryb dewelopera**.
+3. Kliknij **Załaduj rozpakowane** i wskaż rozpakowany folder (ten z plikiem `manifest.json`).
+4. Kliknij ikonę wtyczki → ⚙ → wybierz, kto sprawdza fakty (plan ChatGPT, OpenAI, Gemini, Claude albo OpenRouter) → **Start**,
+   albo wskaż artykuł, post lub mem przyciskami 📄 / 👆 / ✂ / 🔲.
+
+Full guide in Polish: **[INSTRUKCJA.md](INSTRUKCJA.md)** · What's new: **[CHANGELOG.md](CHANGELOG.md)** ·
+Privacy: **[PRIVACY.md](PRIVACY.md)**
 
 ![Fact Checker checking a YouTube debate live](docs/demo-en-vaccines.webp)
 
@@ -22,37 +33,81 @@
 
 ## English
 
-A Chrome extension that listens to a conversation playing in a tab (interview, debate, podcast, live stream) and
-fact-checks it as it happens, in a side panel.
+A browser extension (Chrome, Edge, Opera) that fact-checks what you watch and read, in a side panel:
 
-Every ~30 seconds it picks out the claims in the new speech that can be checked (numbers and statistics, references to studies,
-events, quotes, laws, historical facts) and shows a verdict for each:
+- **Conversations** playing in a tab — interview, debate, podcast, live stream — checked as they happen, every ~30 seconds.
+- **Text on web pages** — an article, a Facebook or X post, or a selected fragment — but only what you point at.
+- **Memes, infographics, charts and photos** — the text in the image and the way it is presented.
 
-**True · Mostly true · Half-true · Misleading · False · No data · Unverifiable**
+For every claim that can be checked (numbers and statistics, references to studies, events, quotes, laws, historical facts)
+it shows a verdict:
 
-Each card also shows the exact quote, a short explanation, what supports the claim, **contradicting studies or data**,
-**what is missing** to settle it, and links to sources. When a speaker cites research, the model checks whether such research
-exists, what it actually says and whether other studies reach the opposite conclusion.
+**True · Mostly true · Half-true · Misleading · False · No data · Unverifiable · Satire**
 
-![Fact Checker on a debate with Charlie Kirk: verdict summary and “Misleading” cards with sources](docs/demo-en-college.webp)
+Each card shows the exact quote and who said it, the claim being checked, a short explanation, what supports it,
+**contradicting data or context**, **what is missing** to settle it, and links to sources.
 
-### How it works
+![Fact Checker on a debate: verdict summary and “Misleading” cards with sources](docs/demo-en-college.webp)
 
-| Step | How | Cost |
-|---|---|---|
-| Capture audio | The tab's audio (you keep hearing it), or the microphone | — |
-| Speech → text | **Local model on your computer** (Whisper / Moonshine in the browser, GPU via WebGPU or CPU). Optional: OpenAI API, or Chrome's built-in speech recognition (microphone only) | free / offline |
-| Fact-checking | OpenAI model via **Sign in with ChatGPT** (uses your ChatGPT Plus/Pro plan) or an OpenAI API key, with web search when available | included in your plan |
+### Features
 
-So with a ChatGPT subscription the whole thing costs nothing extra: transcription runs locally, and fact-checking uses your plan.
+**Live conversations**
+- Tab audio or microphone; speech is turned into text by a **local model on your computer** (free, offline) or by OpenAI.
+- **Speaking now:** while recording you can mark who is speaking; verdicts and the report are attributed to that person.
+- **Date of the statement:** taken from the video's metadata (e.g. YouTube) or set by hand. An old interview is judged by the
+  facts of that time (“inflation is 18%” was true in February 2023).
 
-**Why not a Claude subscription?** Since February 2026 Anthropic does not allow Claude Free/Pro/Max logins in third-party apps.
-Claude could only be added through a paid API key.
+**Text and images on web pages** (nothing is read until you point at it)
+- 📄 **Article** – the article text only (Mozilla Readability), without menus and comments.
+- 👆 **Pick a post** – one Facebook / X post without comments; Shift+click to pick several. Images in the post are included.
+- ✂ **Selection**, or right-click → Fact Checker, or **Alt+Shift+F**.
+- 🔲 **Screen area** – drag a rectangle (e.g. a chart in a video).
+- A preview before sending; verdicts are **highlighted on the page** in the verdict's colour.
+- Images: the model reads the text, checks fake quotes, misleading charts (truncated axes, cherry-picked ranges), screenshots
+  of posts and satire. Reverse image search buttons (Google Lens, TinEye, Yandex) for photos taken out of context.
 
-**Limits of the ChatGPT plan mode** (OpenAI's program is in preview, as of November 2026): no audio transcription (hence the local
-models), and web search depends on the model and account. If OpenAI rejects web search, the extension switches to the model's own
-knowledge and shows a warning (recent events will more often get “No data”). Usage counts toward your plan limits; you can set a
-per-app cap in [ChatGPT → Settings → Usage](https://chatgpt.com/settings/usage).
+**Better verdicts**
+- The model is told to prefer **primary sources** (e.g. for Poland: Sejm votes and transcripts, ISAP, GUS, NBP, Eurostat).
+- **Existing fact-checks** (optional, free Google key): articles by fact-checking outlets from the Google Fact Check database are
+  shown on the card, with a ⚠ warning when an outlet rated the claim differently.
+- **Verdict memory:** the same text or image (e.g. a meme that keeps circulating) gets its earlier result instantly, at no cost.
+  Every image is recognised on its own — a meme checked inside a post is recognised later on its own or in another post — while
+  the same meme template with a different caption is not.
+
+**Working with the results**
+- **📋 Copy as reply** – a comment to paste under the post, written in plain language and matched to the post:
+  *Matter-of-fact*, *Casual*, *Short for X* (fits 280 characters) or the *Original* verdict text. Sources are added as plain links.
+- **Reply to the whole post** – one comment covering all verdicts of a post.
+- **👍 / 👎 ratings** with a comment; export all ratings as JSON to improve the prompts.
+- **Report** – a session (e.g. a debate) as a document: verdict breakdown, speakers table, all verdicts with sources;
+  print / save as PDF or download as HTML.
+- Filter **Only problems**, verdict counts per source, Markdown export.
+
+**Sessions and history**
+- Everything you check goes into the current session, grouped by source; sessions are saved automatically.
+- 🕘 History with search, reopening, export and deleting.
+- A **queue**: point at more posts while one is being checked.
+
+**Costs and privacy**
+- **Cost counter** for the session and the day, an optional **daily spending limit**, and three modes:
+  *Economy* / *Normal* / *Thorough*.
+- **Hide people:** blur profile pictures and author names on screenshots and do not send the post author.
+- API keys can be kept only until the browser closes. No analytics, no server of our own — see [PRIVACY.md](PRIVACY.md).
+
+### Who checks the facts
+
+| Provider | What you need | Web search | Images |
+|---|---|---|---|
+| **ChatGPT plan** | Sign in with your ChatGPT Plus/Pro account | depends on model and account | yes |
+| **OpenAI** | API key (pay per use) | yes | yes |
+| **Google Gemini** | API key – has a free tier | yes (Google Search; free monthly quota) | yes |
+| **Anthropic Claude** | API key (pay per use) | yes (enable it in the Anthropic console) | yes |
+| **OpenRouter** | one key, many models (Claude, Gemini, GPT, free models) | yes | depends on the model |
+
+Anthropic does not allow Claude Free/Pro/Max logins in third-party apps, so Claude works only with an API key.
+With the ChatGPT plan the extension costs nothing extra: transcription runs locally and fact-checking uses your plan
+(OpenAI's program is in preview; usage counts toward your plan limits, see
+[ChatGPT → Settings → Usage](https://chatgpt.com/settings/usage)).
 
 ### Local speech models
 
@@ -70,89 +125,89 @@ Download a model once in ⚙ Settings → **Local models**. After that it works 
 <sub>* Tested in Chromium without a GPU (CPU builds, q8 quantization). Polish: 45 s of read sentences with very quiet audio (FLEURS);
 English: an 11-second speech clip. On a GPU the models run faster and at higher precision (fp16).</sub>
 
-With a GPU (any Apple Silicon Mac, most Windows PCs) pick **Best**; without one, **Medium**. Whisper Large v3 Turbo also understands
-English, so one model covers both languages. The extension cuts audio at pauses, boosts quiet speech and filters typical Whisper
-hallucinations (e.g. “Subtitles by the Amara.org community”, repetition loops).
+With a GPU pick **Best**; without one, **Medium**. Whisper Large v3 Turbo also understands English, so one model covers both
+languages. The extension cuts audio at pauses, boosts quiet speech and filters typical Whisper hallucinations.
 
 ### Installation
 
-1. Download the code: **Code → Download ZIP** on GitHub and unzip it, or `git clone https://github.com/dawidadach/fact-checker.git`.
-2. Open `chrome://extensions` and turn on **Developer mode** (top right).
-3. Click **Load unpacked** and select the folder that contains `manifest.json`.
-4. Pin the extension: puzzle icon → pin.
+Download the package for your browser from the **[latest release](https://github.com/dawidadach/fact-checker/releases/latest)**
+and unzip it.
 
-Requires Chrome 116 or newer.
+| | Chrome | Edge | Opera |
+|---|---|---|---|
+| Package | `fact-checker-chrome.zip` | `fact-checker-edge.zip` | `fact-checker-opera.zip` |
+| Extensions page | `chrome://extensions` | `edge://extensions` | `opera://extensions` |
+| Developer mode | top right | left panel, bottom | top right |
+| Panel | Chrome side panel | Edge side panel | Opera sidebar, or a small window next to the browser |
+| Built-in speech recognition | yes (microphone) | yes (microphone) | no – use a local model or OpenAI |
+
+Then **Load unpacked** → the unzipped folder, and pin the icon (puzzle icon → pin / eye). Requires a Chromium-based browser
+version 116 or newer. The repository root is the Chrome version, so a `git clone` can also be loaded directly in Chrome or Edge.
+
+**Updating without losing settings:** replace the files in the same folder and click **↻ Reload** on the extension.
+Do **not** click **Remove** — that deletes the extension's data (sign-in, keys, models, history). The extension has a fixed ID
+(`key` in `manifest.json`), so everything survives updates.
 
 ### Usage
 
-1. Open the tab with the conversation (YouTube, news stream, podcast…) and **click the Fact Checker icon while on that tab**.
-   The side panel opens and Chrome allows the extension to record that tab. If you skip this step or switch tabs, Chrome will show
-   a “Share a tab” window after you press Start: choose the tab and keep “Also share tab audio” on.
-2. Open ⚙ **Settings**:
-   - **Fact-checking model:** choose *ChatGPT plan* → **Continue with ChatGPT**, sign in and allow plan usage (a tab opens and closes
-     itself), or paste an OpenAI API key.
-   - **Local models:** download a model and select it.
-   - **Conversation language:** Polish or English.
-3. Choose the source: **Tab audio** (recommended) or **Microphone** (Chrome asks for permission in a separate tab the first time).
-4. Press **Start**. Verdict cards appear at the top, newest first.
+1. **A conversation:** open the tab with the video or podcast, click the Fact Checker icon **while on that tab**, choose
+   **Tab audio** or **Microphone** and press **Start**. Verdict cards appear at the top, newest first.
+2. **Text or images on a page:** use 📄 Article, 👆 Pick a post, ✂ Selection or 🔲 Screen area in the panel, or right-click →
+   Fact Checker. Longer texts and all images show a preview first.
+3. In ⚙ **Settings** choose the provider and model, the checking mode, the daily limit, the speech model and the languages.
 
-In the **Transcript** section you can also press **Check now**, paste any text to check, or **Export** everything to Markdown.
-
-**Interface language:** English or Polish, picked automatically from your browser language. You can change it in Settings →
-*Interface language*. Verdicts and explanations are written in the interface language; quotes stay in the original language.
-
-### Updating without losing settings
-
-The extension has a fixed ID (`key` in `manifest.json`), so your ChatGPT login, settings and downloaded models survive updates.
-
-1. Replace the files in the same folder with the new version (or `git pull`).
-2. In `chrome://extensions` click **↻ (reload)** on Fact Checker. The version number is shown in the Settings header.
-
-Do **not** click **Remove**: removing an extension deletes its data in Chrome (login and models).
+The interface is in English or Polish (from the browser language, changeable in Settings). Verdicts are written in the
+interface language; quotes stay in the original language.
 
 ### Privacy
 
-- Audio is processed locally when you use a local model. Only the transcribed text is sent to OpenAI for fact-checking.
-- The ChatGPT login tokens and the API key are stored only in this browser (`chrome.storage.local`).
-- Sign in with ChatGPT gives the extension your name and email, not your ChatGPT conversations.
+- Audio is processed locally with a local speech model; only text goes to the model provider you chose.
+- Page text and images are sent only after you point at them, and you see a preview first.
+- Keys and sign-in tokens stay in this browser. Details: [PRIVACY.md](PRIVACY.md).
 
 ### Project structure
 
 ```
-background.js          service worker: opens the panel, handles the ChatGPT sign-in callback
-sidepanel.*            the side panel UI and the live checking loop
-lib/auth.js            Sign in with ChatGPT: PKCE, dynamic client registration, ID-token check via JWKS, token refresh
-lib/llm.js             OpenAI Responses API (streaming, store:false)
-lib/factcheck.js       prompt, JSON schema of verdicts, parsing, duplicate detection
-lib/transcribe.js      tab/mic capture, cutting at pauses, local / OpenAI / Chrome transcription
-lib/models.js          local model catalog, download/delete, hallucination filter
-lib/whisper-worker.js  worker that runs the speech model
-lib/pcm-worklet.js     AudioWorklet that delivers 16 kHz audio
+manifest.json          Chrome/Edge manifest (the Opera manifest is generated by scripts/build.mjs)
+background.js          service worker: panel, context menu, shortcut, screenshots of images, ChatGPT sign-in callback
+sidepanel.*            the side panel UI: live checking loop, page checks, queue, cards, settings
+content/page.*         page script (injected only on user action): article / post / selection / area, highlighting
+report.*, privacy.*    session report page, privacy policy page
+lib/auth.js            Sign in with ChatGPT (PKCE, dynamic client registration, token refresh)
+lib/llm.js             OpenAI Responses API (streaming, timeouts)
+lib/providers.js       Gemini, Claude and OpenRouter adapters (same request format as OpenAI)
+lib/factcheck.js       prompts, JSON schema of verdicts, parsing, duplicate detection
+lib/capture.js         running the page script in a tab
+lib/shot.js            screenshots of the visible images / screen area
+lib/history.js         sessions (IndexedDB), Markdown export, ratings export
+lib/memory.js          verdict memory: text hashes and image fingerprints
+lib/factcheckapi.js    Google Fact Check Tools (existing fact-checks)
+lib/pricing.js         price lists, cost counter, checking modes
+lib/reply.js           “Copy as reply”: prompts, tones, plain-text sources
+lib/report.js          session report (HTML)
+lib/transcribe.js      tab/mic capture, cutting at pauses, local / OpenAI / browser transcription
+lib/models.js          local speech models
 lib/i18n.js            interface translations (English, Polish)
-_locales/              extension name and description in English and Polish
-vendor/                transformers.js 4.3.2 and ONNX Runtime Web (bundled: extensions may not load code from a CDN)
+lib/vendor/            Mozilla Readability (Apache 2.0)
+vendor/                transformers.js and ONNX Runtime Web (bundled: extensions may not load code from a CDN)
+scripts/build.mjs      builds dist/fact-checker-{chrome,edge,opera}(.zip)
 tests/                 unit tests
 ```
 
-The extension cannot listen on a network port, so the sign-in redirect to `http://127.0.0.1:1457/auth/callback` is intercepted with
-`chrome.webRequest` and the extension exchanges the code itself.
-
-### Tests
+### Building and tests
 
 ```bash
-node --test tests/*.test.mjs
+npm test         # unit tests (node --test)
+npm run build    # dist/fact-checker-chrome.zip, dist/fact-checker-edge.zip, dist/fact-checker-opera.zip
 ```
-
-Unit tests cover SSE stream parsing, request building (no fields that the ChatGPT plan mode forbids), verdict parsing, duplicate
-detection, PKCE (RFC 7636 test vector), ID-token validation, audio segmentation at pauses, quiet speech, gain normalization and the
-hallucination filter.
 
 ### Status
 
-Used on real YouTube debates in Polish and English (see the screenshots): ChatGPT sign-in, web search with sources, tab audio
-and local speech models. Automated tests run in Chromium with OpenAI's servers stubbed (sign-in flow, model list, fact-checking,
-fallback when web search is rejected), and all six local models were downloaded and run on recorded speech.
-If something fails, right-click the panel → **Inspect** and check the Console.
+The original live-audio features were used on real YouTube debates in Polish and English (see the screenshots).
+Page text, images and replies were used on real Facebook posts with the ChatGPT plan. All features are covered by
+unit tests and by end-to-end tests in Chromium with the model providers stubbed; Gemini, Claude and OpenRouter have so far been
+tested only against stubbed servers. If something fails, right-click the panel → **Inspect** and check the Console, and open an
+issue.
 
 ---
 
@@ -160,37 +215,80 @@ If something fails, right-click the panel → **Inspect** and check the Console.
 
 ![Fact Checker sprawdza na żywo debatę o Trybunale Konstytucyjnym](docs/demo-pl-trybunal.webp)
 
-Wtyczka Chrome, która słucha rozmowy odtwarzanej w karcie (wywiad, debata, podcast, transmisja) i na bieżąco sprawdza fakty
-w panelu bocznym.
+Wtyczka do przeglądarki (Chrome, Edge, Opera), która w panelu bocznym sprawdza fakty w tym, co oglądasz i czytasz:
 
-Co ok. 30 sekund wyłapuje z nowej części rozmowy twierdzenia, które da się sprawdzić (liczby i statystyki, powoływanie się na badania,
-wydarzenia, cytaty, przepisy, fakty historyczne), i pokazuje werdykt:
+- **Rozmowy** odtwarzane w karcie – wywiad, debata, podcast, transmisja – na bieżąco, co ok. 30 sekund.
+- **Tekst na stronach** – artykuł, post z Facebooka albo X, zaznaczony fragment – ale tylko to, co wskażesz.
+- **Memy, infografiki, wykresy i zdjęcia** – tekst na obrazku i sposób przedstawienia.
 
-**Prawda · Raczej prawda · Półprawda · Wprowadza w błąd · Fałsz · Brak danych · Nieweryfikowalne**
+Dla każdego twierdzenia, które da się sprawdzić (liczby i statystyki, powoływanie się na badania, wydarzenia, cytaty, przepisy,
+fakty historyczne), pokazuje werdykt:
 
-Każda karta zawiera dosłowny cytat, krótkie wyjaśnienie, co potwierdza twierdzenie, **przeciwne badania lub dane**,
-**czego brakuje** do rozstrzygnięcia i linki do źródeł. Gdy ktoś powołuje się na badania, model sprawdza, czy takie badania
-istnieją, co naprawdę mówią i czy są badania o przeciwnych wnioskach.
+**Prawda · Raczej prawda · Półprawda · Wprowadza w błąd · Fałsz · Brak danych · Nieweryfikowalne · Satyra / żart**
+
+Karta zawiera dosłowny cytat i to, kto go powiedział, sprawdzane twierdzenie, krótkie wyjaśnienie, co je potwierdza,
+**przeciwne dane lub kontekst**, **czego brakuje** do rozstrzygnięcia i linki do źródeł.
 
 ![Fact Checker na debacie o energetyce: podsumowanie werdyktów i karty ze źródłami](docs/demo-pl-energetyka.webp)
 
-### Jak to działa
+### Funkcje
 
-| Krok | Jak | Koszt |
-|---|---|---|
-| Nagranie dźwięku | Dźwięk karty (dalej go słyszysz) albo mikrofon | — |
-| Mowa → tekst | **Lokalny model na Twoim komputerze** (Whisper / Moonshine w przeglądarce, na karcie graficznej przez WebGPU albo na procesorze). Opcjonalnie: OpenAI API albo rozpoznawanie mowy wbudowane w Chrome (tylko mikrofon) | darmowe / offline |
-| Sprawdzanie faktów | Model OpenAI przez **Sign in with ChatGPT** (Twój plan ChatGPT Plus/Pro) albo klucz API OpenAI, z wyszukiwaniem w sieci, gdy jest dostępne | w ramach planu |
+**Rozmowy na żywo**
+- Dźwięk karty albo mikrofon; mowę zamienia na tekst **lokalny model na Twoim komputerze** (za darmo, bez internetu) albo OpenAI.
+- **Teraz mówi:** w trakcie nagrywania wskazujesz, kto mówi – werdykty i raport przypisują wypowiedzi tej osobie.
+- **Data wypowiedzi:** z metadanych filmu (np. YouTube) albo wpisana ręcznie. Stary wywiad jest oceniany według ówczesnych
+  danych („inflacja wynosi 18%” było prawdą w lutym 2023).
 
-Z subskrypcją ChatGPT całość nic dodatkowo nie kosztuje: transkrypcja działa lokalnie, a sprawdzanie faktów korzysta z planu.
+**Tekst i obrazki ze stron** (nic nie jest czytane, dopóki tego nie wskażesz)
+- 📄 **Artykuł** – sama treść artykułu (Mozilla Readability), bez menu i komentarzy.
+- 👆 **Wskaż post** – jeden post z Facebooka / X, bez komentarzy; Shift+klik – kilka po kolei. Obrazki z posta idą razem z nim.
+- ✂ **Zaznaczenie**, prawy przycisk → Fact Checker albo **Alt+Shift+F**.
+- 🔲 **Wycinek** ekranu – zaznaczasz prostokąt (np. wykres w filmie).
+- Podgląd przed wysłaniem; werdykty są **podświetlane na stronie** kolorem werdyktu.
+- Obrazki: model odczytuje tekst, sprawdza fałszywe cytaty, zmanipulowane wykresy (obcięte osie, wybrane zakresy), zrzuty postów
+  i satyrę. Przyciski wyszukiwania obrazem (Google Lens, TinEye, Yandex) – na zdjęcia wyrwane z kontekstu.
 
-**Dlaczego nie subskrypcja Claude?** Od lutego 2026 Anthropic nie pozwala używać logowania Claude Free/Pro/Max w aplikacjach innych
-firm. Claude dałoby się dodać tylko przez płatny klucz API.
+**Lepsze werdykty**
+- Model ma preferować **źródła pierwotne** (np. głosowania i stenogramy Sejmu, ISAP, GUS, NBP, Eurostat).
+- **Gotowe fact-checki** (opcjonalnie, darmowy klucz Google): artykuły redakcji fact-checkingowych z bazy Google Fact Check
+  na karcie, z ostrzeżeniem ⚠, gdy redakcja oceniła coś inaczej.
+- **Pamięć werdyktów:** ten sam tekst albo obrazek (np. mem, który krąży od tygodni) dostaje wcześniejszy wynik od razu, bez
+  kosztów. Każdy obrazek jest rozpoznawany osobno – mem sprawdzony w poście rozpozna się potem sam albo w innym poście – a ten
+  sam szablon mema z innym napisem już nie.
 
-**Ograniczenia trybu planu ChatGPT** (program OpenAI jest w wersji preview, stan na listopad 2026): brak transkrypcji mowy (dlatego
-lokalne modele), a wyszukiwanie w sieci zależy od modelu i konta. Jeśli OpenAI odrzuci wyszukiwanie, wtyczka przełącza się na wiedzę
-modelu i pokazuje ostrzeżenie (świeże wydarzenia częściej dostaną „Brak danych”). Zużycie wlicza się do limitów planu; limit dla
-tej wtyczki ustawisz w [ChatGPT → Settings → Usage](https://chatgpt.com/settings/usage).
+**Praca z wynikami**
+- **📋 Kopiuj jako odpowiedź** – komentarz do wklejenia pod postem, ludzkim językiem i dopasowany do posta: *Rzeczowo*,
+  *Na luzie*, *Krótko pod X* (mieści się w 280 znakach) albo *Oryginał* werdyktu. Źródła jako zwykłe linki.
+- **Odpowiedz na cały post** – jeden komentarz do wszystkich werdyktów posta.
+- **Oceny 👍 / 👎** z komentarzem; eksport wszystkich ocen do JSON – do poprawiania promptów.
+- **Raport** – sesja (np. debata) jako dokument: rozkład werdyktów, tabela mówców, wszystkie werdykty ze źródłami;
+  druk / zapis jako PDF albo pobranie jako HTML.
+- Filtr **Tylko problematyczne**, liczniki werdyktów przy źródłach, eksport do Markdown.
+
+**Sesje i historia**
+- Wszystko, co sprawdzasz, trafia do bieżącej sesji, z podziałem na źródła; sesje zapisują się automatycznie.
+- 🕘 Historia z wyszukiwarką, otwieraniem, eksportem i usuwaniem.
+- **Kolejka:** kolejne posty możesz wskazywać, zanim skończy się sprawdzanie poprzedniego.
+
+**Koszty i prywatność**
+- **Licznik kosztów** sesji i dnia, opcjonalny **dzienny limit wydatków** i trzy tryby: *Oszczędny* / *Normalny* / *Dokładny*.
+- **Ukrywaj osoby:** zamazuje zdjęcia profilowe i nazwy autorów na zrzutach i nie wysyła autora posta.
+- Klucze API mogą znikać po zamknięciu przeglądarki. Bez statystyk i bez własnego serwera – zobacz [PRIVACY.md](PRIVACY.md).
+
+### Kto sprawdza fakty
+
+| Dostawca | Czego potrzebujesz | Wyszukiwanie w sieci | Obrazki |
+|---|---|---|---|
+| **Plan ChatGPT** | logowanie kontem ChatGPT Plus/Pro | zależy od modelu i konta | tak |
+| **OpenAI** | klucz API (płatne za użycie) | tak | tak |
+| **Google Gemini** | klucz API – jest darmowy limit | tak (Google Search; darmowa pula miesięczna) | tak |
+| **Anthropic Claude** | klucz API (płatne za użycie) | tak (trzeba je włączyć w konsoli Anthropic) | tak |
+| **OpenRouter** | jeden klucz, wiele modeli (Claude, Gemini, GPT, darmowe) | tak | zależy od modelu |
+
+Anthropic nie pozwala używać logowania Claude Free/Pro/Max w aplikacjach innych firm, więc Claude działa tylko z kluczem API.
+Z planem ChatGPT wtyczka nic dodatkowo nie kosztuje: transkrypcja działa lokalnie, a sprawdzanie faktów korzysta z planu
+(program OpenAI jest w wersji preview; zużycie wlicza się do limitów planu, zobacz
+[ChatGPT → Settings → Usage](https://chatgpt.com/settings/usage)).
 
 ### Lokalne modele mowy
 
@@ -208,62 +306,57 @@ Model pobierasz raz w ⚙ Ustawienia → **Modele lokalne**. Potem działa bez i
 <sub>* Test w Chromium bez karty graficznej (wersje CPU, kwantyzacja q8). Polski: 45 s czytanych zdań z bardzo cichym nagraniem
 (FLEURS), angielski: 11-sekundowy fragment przemówienia. Na karcie graficznej modele działają szybciej i w lepszej precyzji (fp16).</sub>
 
-Z kartą graficzną (każdy Mac z Apple Silicon, większość komputerów z Windows) wybierz **Najlepszy**, bez niej **Średni**.
-Whisper Large v3 Turbo rozumie też angielski, więc jeden model wystarcza do obu języków. Wtyczka tnie nagranie w przerwach w mowie,
-podgłaśnia cichy dźwięk i wycina typowe „halucynacje” Whispera (np. „Napisy stworzone przez społeczność Amara.org”, pętle powtórzeń).
+Z kartą graficzną wybierz **Najlepszy**, bez niej **Średni**. Whisper Large v3 Turbo rozumie też angielski, więc jeden model
+wystarcza do obu języków. Wtyczka tnie nagranie w przerwach w mowie, podgłaśnia cichy dźwięk i wycina typowe „halucynacje” Whispera.
 
 ### Instalacja
 
-1. Pobierz kod: na GitHubie **Code → Download ZIP** i rozpakuj, albo `git clone https://github.com/dawidadach/fact-checker.git`.
-2. Wejdź na `chrome://extensions` i włącz **Tryb dewelopera** (prawy górny róg).
-3. Kliknij **Załaduj rozpakowane** i wskaż folder, w którym jest `manifest.json`.
-4. Przypnij wtyczkę: ikona puzzla → pinezka.
+Pobierz paczkę dla swojej przeglądarki z **[najnowszego wydania](https://github.com/dawidadach/fact-checker/releases/latest)**
+i rozpakuj.
 
-Wymaga Chrome 116 lub nowszego.
+| | Chrome | Edge | Opera |
+|---|---|---|---|
+| Paczka | `fact-checker-chrome.zip` | `fact-checker-edge.zip` | `fact-checker-opera.zip` |
+| Strona wtyczek | `chrome://extensions` | `edge://extensions` | `opera://extensions` |
+| Tryb dewelopera | prawy górny róg | lewy panel, na dole | prawy górny róg |
+| Panel | panel boczny Chrome | panel boczny Edge | pasek boczny Opery albo małe okno obok przeglądarki |
+| Wbudowane rozpoznawanie mowy | tak (mikrofon) | tak (mikrofon) | nie – użyj lokalnego modelu albo OpenAI |
+
+Potem **Załaduj rozpakowane** → rozpakowany folder i przypnij ikonę (ikona puzzla → pinezka / oko). Wymaga przeglądarki
+opartej na Chromium w wersji 116 lub nowszej. Katalog główny repozytorium to wersja dla Chrome, więc `git clone` też można
+załadować bezpośrednio w Chrome albo Edge. Szczegółowa instrukcja: **[INSTRUKCJA.md](INSTRUKCJA.md)**.
+
+**Aktualizacja bez utraty ustawień:** podmień pliki w tym samym folderze i kliknij **↻ Przeładuj** przy wtyczce. **Nie**
+klikaj **Usuń** – to kasuje dane wtyczki (logowanie, klucze, modele, historię). Wtyczka ma stały identyfikator
+(`key` w `manifest.json`), więc wszystko zostaje po aktualizacji.
 
 ### Użycie
 
-1. Otwórz kartę z rozmową (YouTube, TVN24 GO, podcast…) i **kliknij ikonę Fact Checkera, będąc na tej karcie**.
-   Otworzy się panel, a Chrome pozwoli wtyczce nagrywać tę kartę. Jeśli tego nie zrobisz albo przełączysz kartę, po kliknięciu Start
-   Chrome pokaże okno „Udostępnij kartę”: wybierz kartę z rozmową i zostaw włączone udostępnianie dźwięku.
-2. Otwórz ⚙ **Ustawienia**:
-   - **Model do sprawdzania faktów:** *Plan ChatGPT* → **Continue with ChatGPT**, zaloguj się i zgódź na użycie planu (otworzy się
-     karta, która sama się zamknie), albo wklej klucz API OpenAI.
-   - **Modele lokalne:** pobierz model i go zaznacz.
-   - **Język rozmowy:** polski albo angielski.
-3. Wybierz źródło: **Dźwięk karty** (zalecane) albo **Mikrofon** (za pierwszym razem Chrome poprosi o zgodę w osobnej karcie).
-4. Kliknij **Start**. Karty z werdyktami pojawiają się na górze, najnowsze pierwsze.
+1. **Rozmowa:** otwórz kartę z filmem albo podcastem, kliknij ikonę Fact Checkera **będąc na tej karcie**, wybierz
+   **Dźwięk karty** albo **Mikrofon** i kliknij **Start**. Karty z werdyktami pojawiają się na górze, najnowsze pierwsze.
+2. **Tekst albo obrazki na stronie:** 📄 Artykuł, 👆 Wskaż post, ✂ Zaznaczenie albo 🔲 Wycinek w panelu, albo prawy przycisk →
+   Fact Checker. Dłuższe teksty i wszystkie obrazki najpierw pokazują podgląd.
+3. W ⚙ **Ustawieniach** wybierasz dostawcę i model, tryb sprawdzania, dzienny limit, model mowy i języki.
 
-W sekcji **Transkrypcja** możesz też kliknąć **Sprawdź teraz**, wkleić dowolny tekst do sprawdzenia albo **wyeksportować** całość do Markdown.
-
-**Język interfejsu:** polski albo angielski, wybierany automatycznie według języka przeglądarki. Zmienisz go w Ustawieniach →
-*Język interfejsu*. Werdykty i wyjaśnienia są pisane w języku interfejsu, cytaty zostają w oryginale.
-
-### Aktualizacja bez utraty ustawień
-
-Wtyczka ma stały identyfikator (`key` w `manifest.json`), więc logowanie ChatGPT, ustawienia i pobrane modele zostają po aktualizacji.
-
-1. Podmień pliki w tym samym folderze na nową wersję (albo `git pull`).
-2. W `chrome://extensions` kliknij **↻ (odśwież)** przy Fact Checkerze. Numer wersji widać w nagłówku Ustawień.
-
-**Nie** klikaj **Usuń**: usunięcie wtyczki kasuje w Chrome jej dane (logowanie i modele).
+Interfejs jest po polsku albo po angielsku (według języka przeglądarki, do zmiany w Ustawieniach). Werdykty są pisane w języku
+interfejsu, cytaty zostają w oryginale.
 
 ### Prywatność
 
-- Przy lokalnym modelu dźwięk jest przetwarzany na Twoim komputerze. Do OpenAI trafia tylko tekst transkrypcji, do sprawdzenia faktów.
-- Tokeny logowania ChatGPT i klucz API są zapisane tylko w tej przeglądarce (`chrome.storage.local`).
-- Sign in with ChatGPT przekazuje wtyczce imię i e-mail, nie Twoje rozmowy z ChatGPT.
+- Przy lokalnym modelu mowy dźwięk jest przetwarzany na Twoim komputerze; do wybranego dostawcy modelu trafia tylko tekst.
+- Tekst i obrazki ze stron są wysyłane tylko po ich wskazaniu, a najpierw widzisz podgląd.
+- Klucze i tokeny logowania zostają w tej przeglądarce. Szczegóły: [PRIVACY.md](PRIVACY.md).
 
-### Testy
+### Budowanie i testy
 
 ```bash
-node --test tests/*.test.mjs
+npm test         # testy jednostkowe (node --test)
+npm run build    # dist/fact-checker-chrome.zip, dist/fact-checker-edge.zip, dist/fact-checker-opera.zip
 ```
 
 ### Stan projektu
 
-Używana na prawdziwych debatach na YouTube po polsku i po angielsku (zobacz zrzuty ekranu): logowanie przez ChatGPT, wyszukiwanie
-w sieci ze źródłami, dźwięk karty i lokalne modele mowy. Testy automatyczne działają w Chromium z podstawionymi serwerami OpenAI
-(logowanie, lista modeli, sprawdzanie faktów, wyłączenie wyszukiwania po odmowie), a wszystkie sześć lokalnych modeli zostało
-pobranych i uruchomionych na nagraniach mowy. Jeśli coś nie działa, kliknij prawym przyciskiem w panelu → **Zbadaj** i sprawdź
-zakładkę Console.
+Pierwotne funkcje (rozmowy na żywo) były używane na prawdziwych debatach na YouTube po polsku i po angielsku (zobacz zrzuty
+ekranu). Tekst ze stron, obrazki i odpowiedzi były używane na prawdziwych postach z Facebooka z planem ChatGPT. Wszystkie funkcje mają testy jednostkowe i testy całościowe w Chromium z podstawionymi serwerami dostawców; Gemini,
+Claude i OpenRouter były na razie testowane tylko na podstawionych serwerach. Jeśli coś nie działa, kliknij prawym przyciskiem
+w panelu → **Zbadaj**, sprawdź zakładkę Console i zgłoś problem w Issues.
