@@ -32,7 +32,7 @@ ready reply to paste. It also checks debates and podcasts live.
 Full guide in Polish: **[INSTRUKCJA.md](INSTRUKCJA.md)** · What's new: **[CHANGELOG.md](CHANGELOG.md)** ·
 Privacy: **[PRIVACY.md](PRIVACY.md)**
 
-![A news article checked in Opera: verdicts highlighted in the text with a tooltip, and cards with the claim, the assessment, what supports it, the context and the sources](docs/demo-en-article.webp)
+![A CNN article checked in Opera: claims highlighted in the text in the verdict's colour, verdict counts and the overall rating in the panel – what holds, what is wrong and what needs context](docs/demo-en-article.webp)
 
 ---
 
@@ -61,6 +61,8 @@ verdict with sources:
 - 🔲 **Screen area** – drag a rectangle around anything: a chart in a video, a screenshot, a comment.
 - You see a preview before anything is sent. Verdicts are **highlighted on the page** in the verdict's colour, with a tooltip.
 
+![A Facebook post checked with the post icon: the Fact Checker result box under the post with the overall rating, the verdict, the opinion, sources and “Copy as reply”, and the overall rating with image notes in the panel](docs/demo-en-post-frame.webp)
+
 **What you get**
 - **Overall rating** above the cards – one of five named levels: *Reliable* · *Reliable, minor errors* · *Mixed* ·
   *Misleading* · *Unreliable*. One or two sentences on what the piece says and whether it holds, plus ✓ what holds,
@@ -80,7 +82,7 @@ verdict with sources:
   (truncated axes, cherry-picked ranges), screenshots of posts and satire. Reverse image search (Google Lens, TinEye, Yandex) for
   photos taken out of context.
 
-![An X post with a video screenshot checked in Opera: the panel dates the footage from its caption and rates the claim “Misleading”, with the assessment, what supports it and the context](docs/demo-en-post-video.webp)
+![An X post with a screenshot of a Truth Social post checked in Opera: the result box under the post and, in the panel, the overall rating “Misleading”, the verdict cards and a rhetorical trick](docs/demo-en-post-x.webp)
 
 **Answering under the post**
 - **📋 Copy as reply** – opens on the *Original* verdict text right away (no AI, free); the model writes a comment in
@@ -89,7 +91,7 @@ verdict with sources:
 - **Whole post** – “Copy as reply” under the overall rating gives one comment covering all verdicts, starting from the
   overall rating and the main message.
 
-<img src="docs/demo-en-reply.webp" width="420" alt="Copy as reply: a comment in plain language in the “Matter-of-fact” tone, with tabs for Casual, Short for X and Original">
+<img src="docs/demo-en-reply.webp" width="420" alt="Copy as reply: a comment in plain language in the “Matter-of-fact” tone, with tabs for Casual, Short for X and Original on the right">
 
 ### Better verdicts
 
@@ -113,7 +115,7 @@ verdict with sources:
 - **Report:** the whole debate as a document – verdict breakdown, speakers table (claims, true, problems, tricks), all verdicts
   with sources; print / save as PDF or download as HTML.
 
-![Fact Checker checking a YouTube debate live](docs/demo-en-vaccines.webp)
+![Fact Checker checking a YouTube debate on vaccines live: the “Searching the web” bar with a timer and Stop, and a “False” card with the quote, the explanation, what supports it and the sources](docs/demo-en-live.webp)
 
 ### Sessions, costs and privacy
 
