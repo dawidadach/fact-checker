@@ -344,7 +344,7 @@ fakty historyczne), dostaje werdykt ze źródłami:
 - **Raport:** cała debata jako dokument – rozkład werdyktów, tabela mówców (twierdzenia, prawdziwe, problemy, chwyty),
   wszystkie werdykty ze źródłami; druk / zapis jako PDF albo pobranie jako HTML.
 
-![Fact Checker sprawdza na żywo debatę o Trybunale Konstytucyjnym](docs/demo-pl-trybunal.webp)
+![Fact Checker sprawdza na żywo rozmowę na YouTube: pasek „Szukam w sieci” z czasem i przyciskiem Stop, a na karcie werdykt „Fałsz” z cytatem, wyjaśnieniem, tym, co potwierdza, kontekstem i źródłami](docs/demo-pl-live.webp)
 
 ### Sesje, koszty i prywatność
 
