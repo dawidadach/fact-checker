@@ -44,7 +44,8 @@
   // Reddit, Mastodon…). Zwykły <article> na portalach newsowych NIE jest postem – tam wskazuje się akapity.
   function postOf(el) {
     if (!el?.closest) return null;
-    return el.closest('article[data-testid="tweet"]') || (isX ? el.closest("article") : null) || el.closest('[role="article"]');
+    return el.closest('article[data-testid="tweet"]') || (isX ? el.closest("article") : null) || el.closest('[role="article"]')
+      || (isFB ? el.closest("[aria-posinset]") : null); // kanał FB bez role="article" – element listy
   }
   const isTweet = (el) => el.matches('article[data-testid="tweet"]') || (isX && el.localName === "article");
 
@@ -115,8 +116,16 @@
   }
 
   const cleanLines = (t) => t.split("\n").map((l) => l.trim()).filter((l) => l && !UI_LINE.test(l)).join("\n");
-  const seeMore = (el) => [...el.querySelectorAll('[role="button"], button')]
-    .some((b) => /^(zobacz więcej|see more|wyświetl więcej|show more|pokaż więcej|…\s*more)$/i.test(b.innerText.trim()) && postOf(b) === el);
+  // Nazwa autora bez przycisków, które Facebook wstawia obok niej w tym samym nagłówku: „· Obserwuj” (oficjalne
+  // profile, strony), „· Dołącz” (grupy) – i bez samotnych kropek.
+  const NEXT_TO_NAME = /^(obserwuj|obserwujesz|follow|following|dołącz|join|polub|subskrybuj|subscribe)$/i;
+  const cleanAuthor = (s) => String(s || "").split(/\n|\s*·\s*/)
+    .map((p) => p.trim().replace(/(?<=\S)\s*(Obserwuj|Obserwujesz|Follow|Following|Dołącz|Join)$/u, "").trim()) // przyklejone do nazwy
+    .filter((p) => p && !NEXT_TO_NAME.test(p) && !UI_LINE.test(p)).join(" · ");
+  const SEE_MORE = /^(zobacz więcej|see more|wyświetl więcej|show more|pokaż więcej|…\s*more)$/i;
+  const seeMoreBtn = (el) => [...el.querySelectorAll('[role="button"], button')]
+    .find((b) => SEE_MORE.test(b.innerText.trim()) && postOf(b) === el) || null;
+  const seeMore = (el) => !!seeMoreBtn(el);
 
   function extractPost(el) {
     const meta = pageMeta();
@@ -130,10 +139,12 @@
       if (!text) text = ownText(el);
     } else if (isPost) {
       // Facebook oznacza treść posta atrybutem data-ad-(comet-)preview="message" – bierzemy tylko ją.
-      const msgs = [...el.querySelectorAll('[data-ad-preview="message"], [data-ad-comet-preview="message"]')].filter((m) => postOf(m) === el);
+      let msgs = [...el.querySelectorAll('[data-ad-preview="message"], [data-ad-comet-preview="message"]')].filter((m) => postOf(m) === el);
+      if (!msgs.length) msgs = [...el.querySelectorAll('[data-ad-rendering-role="story_message"]')].filter((m) => postOf(m) === el);
+      msgs = msgs.filter((m) => !msgs.some((o) => o !== m && o.contains(m)));
       text = msgs.length ? msgs.map((m) => m.innerText).join("\n\n") : cleanLines(ownText(el));
       const who = [...el.querySelectorAll(isFB ? "h2, h3, h4, strong" : "h2, h3, h4")].find((h) => postOf(h) === el && h.innerText.trim().length < 80);
-      extra.author = who?.innerText.trim() || "";
+      extra.author = cleanAuthor(who?.innerText);
       truncated = seeMore(el);
     } else {
       text = ownText(el);
@@ -156,6 +167,29 @@
       captureId,
     };
   }
+  // Ikonka „sprawdź” przy poście (content/buttons.js): post wskazany kliknięciem, odebrany po tokenie.
+  // Na Facebooku najpierw rozwijamy „Zobacz więcej” (rozwija się w miejscu); na X „Pokaż więcej” przenosi
+  // na stronę tweeta, więc tam tylko oznaczamy skrócenie (podgląd pozwoli wkleić resztę).
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function postFrom({ token = "" } = {}) {
+    const el = globalThis.__fcButtons?.take?.(token);
+    if (!el) return { error: "postGone" };
+    const more = isFB ? seeMoreBtn(el) : null;
+    if (more) {
+      const before = (el.innerText || "").length;
+      more.click();
+      for (let i = 0; i < 20 && more.isConnected && (el.innerText || "").length <= before; i++) await wait(100);
+    }
+    const res = extractPost(el);
+    return { ...res, via: "button", skipPreview: !res.truncated };
+  }
+
+  // Wynik sprawdzenia posta z przycisku „Sprawdź fakty” – ramka pod tym postem (rysuje ją content/buttons.js).
+  function injectResult({ captureId = "", html = "", css = "", reset = false } = {}) {
+    const el = roots.get(captureId);
+    return !!(el && globalThis.__fcButtons?.showResult?.(el, { html, css, captureId, reset }));
+  }
+
   // Linki wychodzące z posta (do sprawdzenia, czy nie prowadzą na podróbkę): rozpakowane przekierowania serwisów,
   // bez linków do samego serwisu (profile, hashtagi). Maks. 15.
   const PLATFORM = /(^|\.)(facebook|fbcdn|instagram|messenger|whatsapp|x|twitter|twimg|tiktok|youtube|youtu|google|gstatic|linkedin|reddit|threads)\.(com|net|be)$/;
@@ -855,7 +889,7 @@
 
   let cssDone = false;
   globalThis.__fc = {
-    selection, article, pick, highlight, clear, busy, toast, imageBySrc, area, prepareShot, endShot, mediaInfo,
+    selection, article, pick, postFrom, injectResult, highlight, clear, busy, toast, imageBySrc, area, prepareShot, endShot, mediaInfo,
     scrollTo: scrollToMark,
     cssNeeded: () => { const need = !cssDone; cssDone = true; return need; },
     // do testów

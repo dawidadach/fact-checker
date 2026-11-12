@@ -1,0 +1,219 @@
+/* Fact Checker – design tokens (z projektu „fact-checker-design”, src/styles.css).
+ * Motyw: według systemu; [data-theme="light|dark"] wymusza jeden. :host – ramka wyniku w Shadow DOM na stronach.
+ * Zmieniając kolor ciemnego motywu, zmień go w OBU blokach (media query i [data-theme="dark"]). */
+
+:root,
+:host,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces & text */
+  --fc-bg: oklch(0.975 0.005 255);
+  --fc-surface: oklch(1 0 0);
+  --fc-surface-2: oklch(0.965 0.006 255);
+  --fc-surface-3: oklch(0.94 0.008 255);
+  --fc-border: oklch(0.91 0.009 255);
+  --fc-border-strong: oklch(0.84 0.012 255);
+  --fc-text: oklch(0.22 0.03 262);
+  --fc-text-2: oklch(0.42 0.025 262);
+  --fc-text-3: oklch(0.52 0.02 262);
+  --fc-overlay: oklch(0.2 0.03 262 / 0.35);
+
+  /* Accent (deep blue) */
+  --fc-accent: oklch(0.47 0.17 263);
+  --fc-accent-hover: oklch(0.41 0.17 263);
+  --fc-accent-soft: oklch(0.95 0.025 263);
+  --fc-accent-text: oklch(0.44 0.17 263);
+  --fc-on-accent: oklch(0.99 0 0);
+  --fc-focus: oklch(0.6 0.18 263 / 0.45);
+
+  /* Status */
+  --fc-danger: oklch(0.53 0.2 25);
+  --fc-danger-hover: oklch(0.47 0.2 25);
+  --fc-danger-soft: oklch(0.96 0.025 25);
+  --fc-warn: oklch(0.52 0.12 65);
+  --fc-warn-soft: oklch(0.97 0.04 85);
+  --fc-success: oklch(0.5 0.13 155);
+  --fc-live: oklch(0.6 0.22 25);
+
+  /* 8 verdicts: fg (text/icon/edge, AA on surface) + bg */
+  --fc-v-true: oklch(0.48 0.12 155);
+  --fc-v-true-bg: oklch(0.955 0.035 155);
+  --fc-v-mostly: oklch(0.5 0.11 135);
+  --fc-v-mostly-bg: oklch(0.96 0.035 135);
+  --fc-v-half: oklch(0.51 0.11 70);
+  --fc-v-half-bg: oklch(0.965 0.045 85);
+  --fc-v-misleading: oklch(0.52 0.14 50);
+  --fc-v-misleading-bg: oklch(0.96 0.04 60);
+  --fc-v-false: oklch(0.52 0.19 25);
+  --fc-v-false-bg: oklch(0.955 0.03 25);
+  --fc-v-nodata: oklch(0.49 0.015 262);
+  --fc-v-nodata-bg: oklch(0.955 0.005 262);
+  --fc-v-unverifiable: oklch(0.49 0.025 240);
+  --fc-v-unverifiable-bg: oklch(0.955 0.008 240);
+  --fc-v-satire: oklch(0.5 0.16 305);
+  --fc-v-satire-bg: oklch(0.96 0.03 305);
+
+  /* Overall rating — 5 levels */
+  --fc-o-1: oklch(0.58 0.14 155);
+  --fc-o-2: oklch(0.66 0.14 135);
+  --fc-o-3: oklch(0.74 0.14 80);
+  --fc-o-4: oklch(0.65 0.16 50);
+  --fc-o-5: oklch(0.56 0.2 25);
+  --fc-o-off: oklch(0.92 0.008 255);
+
+  /* Eristic ploys */
+  --fc-ploy: oklch(0.48 0.17 300);
+  --fc-ploy-bg: oklch(0.96 0.03 300);
+
+  /* Source tiers: fg / bg */
+  --fc-src-data: oklch(0.45 0.13 250);       --fc-src-data-bg: oklch(0.95 0.03 250);
+  --fc-src-doc: oklch(0.45 0.05 230);        --fc-src-doc-bg: oklch(0.95 0.012 230);
+  --fc-src-science: oklch(0.46 0.1 190);     --fc-src-science-bg: oklch(0.95 0.03 190);
+  --fc-src-gov: oklch(0.45 0.13 275);        --fc-src-gov-bg: oklch(0.95 0.03 275);
+  --fc-src-poll: oklch(0.47 0.1 215);        --fc-src-poll-bg: oklch(0.95 0.03 215);
+  --fc-src-factcheck: oklch(0.47 0.12 155);  --fc-src-factcheck-bg: oklch(0.95 0.035 155);
+  --fc-src-media: oklch(0.5 0.1 70);         --fc-src-media-bg: oklch(0.96 0.04 80);
+  --fc-src-encyclopedia: oklch(0.47 0.04 200); --fc-src-encyclopedia-bg: oklch(0.955 0.012 200);
+  --fc-src-social: oklch(0.5 0.15 350);      --fc-src-social-bg: oklch(0.96 0.025 350);
+
+  /* Shadows */
+  --fc-shadow-1: 0 1px 2px oklch(0.2 0.03 262 / 0.06), 0 1px 1px oklch(0.2 0.03 262 / 0.03);
+  --fc-shadow-2: 0 4px 14px -4px oklch(0.2 0.03 262 / 0.12), 0 1px 3px oklch(0.2 0.03 262 / 0.06);
+  --fc-shadow-3: 0 18px 40px -12px oklch(0.2 0.03 262 / 0.28);
+  --fc-skeleton-hi: oklch(0.99 0 0 / 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]),
+  :host(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --fc-bg: oklch(0.165 0.014 262);
+    --fc-surface: oklch(0.205 0.016 262);
+    --fc-surface-2: oklch(0.235 0.018 262);
+    --fc-surface-3: oklch(0.27 0.02 262);
+    --fc-border: oklch(0.3 0.02 262);
+    --fc-border-strong: oklch(0.38 0.022 262);
+    --fc-text: oklch(0.95 0.006 262);
+    --fc-text-2: oklch(0.8 0.012 262);
+    --fc-text-3: oklch(0.7 0.014 262);
+    --fc-overlay: oklch(0.08 0.01 262 / 0.6);
+    --fc-accent: oklch(0.72 0.13 263);
+    --fc-accent-hover: oklch(0.78 0.11 263);
+    --fc-accent-soft: oklch(0.3 0.06 263);
+    --fc-accent-text: oklch(0.78 0.12 263);
+    --fc-on-accent: oklch(0.17 0.03 263);
+    --fc-focus: oklch(0.72 0.13 263 / 0.5);
+    --fc-danger: oklch(0.7 0.17 25);
+    --fc-danger-hover: oklch(0.76 0.15 25);
+    --fc-danger-soft: oklch(0.29 0.06 25);
+    --fc-warn: oklch(0.8 0.13 80);
+    --fc-warn-soft: oklch(0.29 0.05 75);
+    --fc-success: oklch(0.76 0.13 155);
+    --fc-live: oklch(0.68 0.2 25);
+    --fc-v-true: oklch(0.78 0.13 155);         --fc-v-true-bg: oklch(0.28 0.05 155);
+    --fc-v-mostly: oklch(0.8 0.12 135);        --fc-v-mostly-bg: oklch(0.28 0.045 135);
+    --fc-v-half: oklch(0.82 0.12 85);          --fc-v-half-bg: oklch(0.29 0.05 80);
+    --fc-v-misleading: oklch(0.78 0.13 55);    --fc-v-misleading-bg: oklch(0.29 0.055 55);
+    --fc-v-false: oklch(0.74 0.16 25);         --fc-v-false-bg: oklch(0.29 0.07 25);
+    --fc-v-nodata: oklch(0.76 0.012 262);      --fc-v-nodata-bg: oklch(0.27 0.012 262);
+    --fc-v-unverifiable: oklch(0.76 0.025 240); --fc-v-unverifiable-bg: oklch(0.27 0.018 240);
+    --fc-v-satire: oklch(0.78 0.12 305);       --fc-v-satire-bg: oklch(0.28 0.06 305);
+    --fc-o-1: oklch(0.7 0.14 155);
+    --fc-o-2: oklch(0.76 0.14 135);
+    --fc-o-3: oklch(0.8 0.13 85);
+    --fc-o-4: oklch(0.73 0.15 55);
+    --fc-o-5: oklch(0.68 0.18 25);
+    --fc-o-off: oklch(0.3 0.02 262);
+    --fc-ploy: oklch(0.78 0.13 300);
+    --fc-ploy-bg: oklch(0.28 0.06 300);
+    --fc-src-data: oklch(0.8 0.1 250);         --fc-src-data-bg: oklch(0.29 0.05 250);
+    --fc-src-doc: oklch(0.8 0.04 230);         --fc-src-doc-bg: oklch(0.29 0.02 230);
+    --fc-src-science: oklch(0.8 0.09 190);     --fc-src-science-bg: oklch(0.28 0.04 190);
+    --fc-src-gov: oklch(0.8 0.1 275);          --fc-src-gov-bg: oklch(0.29 0.05 275);
+    --fc-src-poll: oklch(0.8 0.08 215);        --fc-src-poll-bg: oklch(0.28 0.04 215);
+    --fc-src-factcheck: oklch(0.8 0.11 155);   --fc-src-factcheck-bg: oklch(0.28 0.05 155);
+    --fc-src-media: oklch(0.82 0.1 80);        --fc-src-media-bg: oklch(0.29 0.05 80);
+    --fc-src-encyclopedia: oklch(0.8 0.04 200); --fc-src-encyclopedia-bg: oklch(0.28 0.02 200);
+    --fc-src-social: oklch(0.8 0.11 350);      --fc-src-social-bg: oklch(0.29 0.05 350);
+    --fc-shadow-1: 0 1px 2px oklch(0 0 0 / 0.4);
+    --fc-shadow-2: 0 6px 18px -6px oklch(0 0 0 / 0.55), 0 1px 2px oklch(0 0 0 / 0.4);
+    --fc-shadow-3: 0 22px 48px -12px oklch(0 0 0 / 0.7);
+    --fc-skeleton-hi: oklch(1 0 0 / 0.06);
+  }
+}
+
+[data-theme="dark"],
+:host([data-theme="dark"]) {
+  color-scheme: dark;
+  --fc-bg: oklch(0.165 0.014 262);
+  --fc-surface: oklch(0.205 0.016 262);
+  --fc-surface-2: oklch(0.235 0.018 262);
+  --fc-surface-3: oklch(0.27 0.02 262);
+  --fc-border: oklch(0.3 0.02 262);
+  --fc-border-strong: oklch(0.38 0.022 262);
+  --fc-text: oklch(0.95 0.006 262);
+  --fc-text-2: oklch(0.8 0.012 262);
+  --fc-text-3: oklch(0.7 0.014 262);
+  --fc-overlay: oklch(0.08 0.01 262 / 0.6);
+  --fc-accent: oklch(0.72 0.13 263);
+  --fc-accent-hover: oklch(0.78 0.11 263);
+  --fc-accent-soft: oklch(0.3 0.06 263);
+  --fc-accent-text: oklch(0.78 0.12 263);
+  --fc-on-accent: oklch(0.17 0.03 263);
+  --fc-focus: oklch(0.72 0.13 263 / 0.5);
+  --fc-danger: oklch(0.7 0.17 25);
+  --fc-danger-hover: oklch(0.76 0.15 25);
+  --fc-danger-soft: oklch(0.29 0.06 25);
+  --fc-warn: oklch(0.8 0.13 80);
+  --fc-warn-soft: oklch(0.29 0.05 75);
+  --fc-success: oklch(0.76 0.13 155);
+  --fc-live: oklch(0.68 0.2 25);
+  --fc-v-true: oklch(0.78 0.13 155);         --fc-v-true-bg: oklch(0.28 0.05 155);
+  --fc-v-mostly: oklch(0.8 0.12 135);        --fc-v-mostly-bg: oklch(0.28 0.045 135);
+  --fc-v-half: oklch(0.82 0.12 85);          --fc-v-half-bg: oklch(0.29 0.05 80);
+  --fc-v-misleading: oklch(0.78 0.13 55);    --fc-v-misleading-bg: oklch(0.29 0.055 55);
+  --fc-v-false: oklch(0.74 0.16 25);         --fc-v-false-bg: oklch(0.29 0.07 25);
+  --fc-v-nodata: oklch(0.76 0.012 262);      --fc-v-nodata-bg: oklch(0.27 0.012 262);
+  --fc-v-unverifiable: oklch(0.76 0.025 240); --fc-v-unverifiable-bg: oklch(0.27 0.018 240);
+  --fc-v-satire: oklch(0.78 0.12 305);       --fc-v-satire-bg: oklch(0.28 0.06 305);
+  --fc-o-1: oklch(0.7 0.14 155);
+  --fc-o-2: oklch(0.76 0.14 135);
+  --fc-o-3: oklch(0.8 0.13 85);
+  --fc-o-4: oklch(0.73 0.15 55);
+  --fc-o-5: oklch(0.68 0.18 25);
+  --fc-o-off: oklch(0.3 0.02 262);
+  --fc-ploy: oklch(0.78 0.13 300);
+  --fc-ploy-bg: oklch(0.28 0.06 300);
+  --fc-src-data: oklch(0.8 0.1 250);         --fc-src-data-bg: oklch(0.29 0.05 250);
+  --fc-src-doc: oklch(0.8 0.04 230);         --fc-src-doc-bg: oklch(0.29 0.02 230);
+  --fc-src-science: oklch(0.8 0.09 190);     --fc-src-science-bg: oklch(0.28 0.04 190);
+  --fc-src-gov: oklch(0.8 0.1 275);          --fc-src-gov-bg: oklch(0.29 0.05 275);
+  --fc-src-poll: oklch(0.8 0.08 215);        --fc-src-poll-bg: oklch(0.28 0.04 215);
+  --fc-src-factcheck: oklch(0.8 0.11 155);   --fc-src-factcheck-bg: oklch(0.28 0.05 155);
+  --fc-src-media: oklch(0.82 0.1 80);        --fc-src-media-bg: oklch(0.29 0.05 80);
+  --fc-src-encyclopedia: oklch(0.8 0.04 200); --fc-src-encyclopedia-bg: oklch(0.28 0.02 200);
+  --fc-src-social: oklch(0.8 0.11 350);      --fc-src-social-bg: oklch(0.29 0.05 350);
+  --fc-shadow-1: 0 1px 2px oklch(0 0 0 / 0.4);
+  --fc-shadow-2: 0 6px 18px -6px oklch(0 0 0 / 0.55), 0 1px 2px oklch(0 0 0 / 0.4);
+  --fc-shadow-3: 0 22px 48px -12px oklch(0 0 0 / 0.7);
+  --fc-skeleton-hi: oklch(1 0 0 / 0.06);
+}
+
+/* Theme-independent tokens */
+:root,
+:host {
+  --fc-font: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fc-font-mono: ui-monospace, "SF Mono", Consolas, monospace;
+  --fc-fs-12: 0.75rem;   --fc-lh-12: 1rem;
+  --fc-fs-13: 0.8125rem; --fc-lh-13: 1.25rem;
+  --fc-fs-14: 0.875rem;  --fc-lh-14: 1.375rem;
+  --fc-fs-16: 1rem;      --fc-lh-16: 1.5rem;
+  --fc-fs-20: 1.25rem;   --fc-lh-20: 1.75rem;
+  --fc-fw-regular: 400;  --fc-fw-medium: 500; --fc-fw-semibold: 600; --fc-fw-bold: 700;
+  --fc-sp-1: 4px; --fc-sp-2: 8px; --fc-sp-3: 12px; --fc-sp-4: 16px;
+  --fc-sp-5: 20px; --fc-sp-6: 24px; --fc-sp-8: 32px;
+  --fc-r-xs: 6px; --fc-r-sm: 8px; --fc-r-md: 10px; --fc-r-lg: 13px; --fc-r-pill: 999px;
+  --fc-dur-fast: 120ms; --fc-dur: 180ms; --fc-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --fc-panel-w: 380px;
+}

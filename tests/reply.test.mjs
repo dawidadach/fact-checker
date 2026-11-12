@@ -92,6 +92,10 @@ test("oryginał: tekst werdyktu jak w panelu, bez przeróbek", async () => {
   assert.match(one, /Opracowane z pomocą AI/);
   const all = originalReply([CLAIM, CLAIM2]);
   assert.match(all, /\n\n„Projekt przyjęto bez konsultacji\.”\nOcena: Fałsz \(pewność: niska\)\./);
+  const withSum = originalReply([CLAIM, CLAIM2], { summary: { level: "wprowadza_w_blad", headline: "Post miesza fakty z nadinterpretacją." } });
+  assert.match(withSum, /^Ocena całości: Wprowadza w błąd\. Post miesza fakty z nadinterpretacją\.\n\n„Ustawa pozwala/);
+  assert.ok(withSum.endsWith(all.slice(all.indexOf("„Ustawa"))));
+  assert.equal(originalReply([CLAIM], { summary: { level: "mieszany", headline: "" } }), one);
   setLang("en");
   assert.match(originalReply([CLAIM2]), /Assessment: False \(confidence: low\)\.[\s\S]*Source:\n- RCL: https:\/\/legislacja\.gov\.pl\/x[\s\S]*Prepared with the help of AI/);
   setLang("pl");

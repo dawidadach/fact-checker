@@ -2,6 +2,113 @@
 
 Rozwinięcie wtyczki [dawidadach/fact-checker](https://github.com/dawidadach/fact-checker) (punkt wyjścia: v0.4.1).
 
+## 0.7.6 – 12 listopada 2026
+
+### Zmiany
+- **Autor posta bez „Obserwuj”:** przy oficjalnych profilach i stronach na Facebooku niebieskie „Obserwuj” (a w grupach
+  „Dołącz”) obok nazwy nie trafia już do autora ani do tytułu źródła.
+- **Karta twierdzenia:** po rozwinięciu od razu widać wszystkie sekcje – „Co potwierdza”, „Przeciwne dane / kontekst” i
+  „Czego brakuje” (wcześniej rozwinięta była tylko pierwsza).
+- **Ikonka przy postach – osobno dla Facebooka i X:**
+  - dwa przełączniki w ⚙ → Ikonka przy postach;
+  - przeglądarka pyta o zgodę tylko na serwis, który włączasz;
+  - wyłączenie jednego serwisu nie rusza drugiego;
+  - kto miał włączoną dawną wspólną opcję, ma włączone oba serwisy.
+
+## 0.7.5 – 12 listopada 2026
+
+### Zmiany
+- **Ikonka przy postach (Facebook, X) – tylko po najechaniu:**
+  - pojawia się dopiero, gdy kursor jest nad postem, w jego prawym górnym rogu, na lewo od „…” (na X także od ikonki Groka);
+  - nie zmienia układu strony: leży nad nią, zamiast przycisku „Sprawdź fakty” pod tekstem i w pasku akcji;
+  - kursor nad komentarzem albo udostępnionym postem pokazuje ikonkę posta „z wierzchu”;
+  - chowa się, gdy jej miejsce zasłania górny pasek serwisu (przewinięty post);
+  - post bez „…” ma ikonkę przy prawej krawędzi.
+- **Stan ikonki:**
+  - w trakcie sprawdzania się kręci;
+  - po wyniku jest wypełniona – kliknięcie chowa ramkę, następne pokazuje ją z powrotem.
+- **Ramka z wynikiem:** na Facebooku pod tekstem posta, na X pod paskiem akcji (bez zmian).
+- **Lżejszy skrypt na stronie:** nie przegląda już strony przy każdej zmianie, reaguje tylko na ruch myszy.
+
+## 0.7.4 – 12 listopada 2026
+
+### Zmiany
+- **„Kopiuj jako odpowiedź” zaczyna od Oryginału:**
+  - po kliknięciu od razu jest tekst werdyktu, bez zapytania do modelu (za darmo);
+  - model pisze dopiero po wybraniu tonu: Rzeczowo, Na luzie albo Krótko pod X;
+  - zakładki są w jednym rzędzie, „Oryginał” skrajnie z prawej;
+  - okienko nie zapamiętuje już ostatniego tonu, a posty z X nie przełączają się same na krótką wersję.
+- **„Kopiuj jako odpowiedź” w ocenie całości:**
+  - przycisk w stopce oceny daje jeden komentarz do wszystkich werdyktów źródła;
+  - Oryginał zaczyna się od oceny całości („Ocena całości: Mieszany. …”);
+  - „Odpowiedz na cały post” przy źródle zostaje tylko wtedy, gdy oceny całości jeszcze nie ma.
+- **Bez 👍/👎 – „Sprawdź dokładniej” w stopce każdej karty:**
+  - otwiera pole na uwagę (opcjonalną) i wybór dostawcy;
+  - „Sprawdź” albo Enter uruchamia sprawdzenie, „Anuluj” zamyka pole bez wysyłania.
+- **Eksport w Historii:**
+  - nazywa się „Eksportuj dokładniejsze sprawdzenia (JSON)”;
+  - obejmuje werdykty sprawdzone dokładniej: uwagę oraz werdykt przed i po;
+  - dawne oceny 👍/👎 nadal są w eksporcie;
+  - to samo sprawdzenie wczytane z pamięci w kolejnej sesji liczy się raz.
+
+## 0.7.3 – 12 listopada 2026
+
+### Nowy wygląd
+- **Panel według projektu „fact-checker-design”:**
+  - wspólne kolory, odstępy i komponenty (`fc-tokens.css`, `fc-components.css`);
+  - jasny i ciemny motyw według systemu;
+  - czcionka Inter dołączona do wtyczki, bez łączenia z Google Fonts;
+  - ikony Lucide zamiast emoji;
+  - działa przy szerokości od 320 do 480 px.
+- **Start:**
+  - karty „Sprawdź stronę” (Artykuł, Wskaż post, Zaznaczenie, Wycinek) i „Słuchaj na żywo”, do tego „Jak to działa” i ostatnia sesja;
+  - po pierwszym wyniku te same przyciski zostają nad wynikami jako zwarty pasek.
+- **Wynik:**
+  - karta źródła, ocena całości z paskiem pięciu poziomów (także stan „Nie do oceny”), ostrzeżenie przed oszustwem (wysokie ryzyko – nad oceną);
+  - **pigułki werdyktów filtrują karty** – nowość;
+  - przełącznik „Tylko problemy” i koszt.
+- **Karty:**
+  - zwinięte od razu, problemy na górze (wcześniej dopiero po ocenie całości);
+  - rozwinięta jest jedyna karta źródła i najnowsza z nagrania;
+  - szczegóły w zwijanych sekcjach;
+  - źródła z inicjałem serwisu, domeną i poziomem.
+- **Na żywo:** czerwony pasek z czasem i przyciskiem Stop, mówcy jako chipy z inicjałami.
+- **Ustawienia:** rozwijane sekcje z podsumowaniem pod tytułem; Zapisz/Anuluj zawsze widoczne na dole.
+- **Historia i podgląd** jako pełne ekrany ze strzałką „Wróć”; „Kopiuj jako odpowiedź” i „Zamiana mowy na tekst” wysuwają się od dołu.
+
+### Nowe
+- **Wynik pod postem na X i Facebooku:**
+  - przycisk „Sprawdź fakty” pokazuje stan (Sprawdzam… → Ukryj ⇄ Pokaż wynik);
+  - pod postem pojawia się ramka z oceną całości, werdyktami, opinią, źródłami oraz przyciskami „Kopiuj jako odpowiedź” i „Szczegóły w panelu”;
+  - ramka jest w zamkniętym Shadow DOM i aktualizuje się po „Sprawdź dokładniej” albo „Podsumuj całość”.
+- **Opcja „Zapisuj sesje w historii”** (domyślnie włączona). Wyłączona: wyniki znikają po zamknięciu panelu.
+
+### Bez zmian
+- Logika sprawdzania, koszty w USD, nazwy poziomów oceny (Rzetelny … Nierzetelny).
+- „Kopiuj” w odpowiedzi pod X nie jest blokowane powyżej 280 znaków – licznik tylko ostrzega.
+- Nie dodaliśmy z projektu „anonimowych ocen 👍/👎” – wtyczka nie ma serwera i niczego nie wysyła autorom.
+
+## 0.7.2 – 12 listopada 2026
+
+### Ikonka przy postach na Facebooku i X
+- **Jedno kliknięcie zamiast „Wskaż post”.** Po włączeniu opcji (⚙ → *Ikonka przy postach*) przy każdym poście jest
+  ikonka Fact Checkera:
+  - na Facebooku – pod tekstem posta, przycisk „Sprawdź fakty”;
+  - na X – w pasku akcji tweeta, obok „Odpowiedz / Podaj dalej / Lubię”;
+  - przy postach bez tekstu (np. sam mem) – w rogu posta, po najechaniu na niego myszą.
+- Kliknięcie otwiera panel i od razu sprawdza ten post: z obrazkami i linkami, bez komentarzy, bez okna podglądu.
+  Na Facebooku wtyczka sama rozwija „Zobacz więcej”. Skrócony tweet nadal pokazuje podgląd, żeby można było wkleić
+  resztę.
+- Ikonki pojawiają się też przy postach doładowywanych podczas przewijania. Nie ma ich przy komentarzach ani
+  przy poście udostępnionym wewnątrz innego.
+- **Domyślnie wyłączone.** Przy włączaniu przeglądarka pyta o dostęp tylko do facebook.com i x.com. Opcja działa
+  od razu, w już otwartych kartach, bez zapisywania i odświeżania; wyłączenie od razu zdejmuje ikonki.
+- **Prywatność bez zmian:** skrypt ikonek szuka na stronie tylko miejsc na ikonkę. Treść posta jest czytana
+  i wysyłana do modelu dopiero po kliknięciu.
+- Gdyby przeglądarka nie pozwoliła otworzyć panelu, post czeka w kolejce, na ikonie wtyczki jest licznik,
+  a na stronie podpowiedź, gdzie kliknąć.
+- „Wskaż post” rozpoznaje teraz także posty w kanale Facebooka oznaczone inaczej niż `role="article"`.
+
 ## 0.7.1 – 12 listopada 2026
 
 - **Chwyty erystyczne:** gdy model nie znajdzie żadnego, pod kartami jest linijka „🎭 Brak wyraźnych chwytów erystycznych”. Wcześniej nie było nic i nie było wiadomo, czy chwyty w ogóle były sprawdzane. Pamięć werdyktów zapamiętuje także ten wynik.
