@@ -262,7 +262,7 @@ against stubbed servers. If something fails, right-click the panel → **Inspect
 
 ## Polski
 
-![Artykuł z serwisu informacyjnego sprawdzony w Operze: karta pokazuje twierdzenie, ocenę, co je potwierdza, kontekst, czego brakuje i źródła](docs/demo-pl-article.webp)
+![Post na Facebooku sprawdzony w Operze jednym kliknięciem ikonki przy „…”: twierdzenia podkreślone w tekście kolorem werdyktu, a w panelu ocena całości – co się zgadza, co jest fałszywe i czego brakuje](docs/demo-pl-post.webp)
 
 Wtyczka do przeglądarki (Chrome, Edge, Opera), która w panelu bocznym sprawdza fakty w tym, co czytasz i oglądasz:
 
@@ -287,6 +287,8 @@ fakty historyczne), dostaje werdykt ze źródłami:
 - 🔲 **Wycinek** ekranu – zaznaczasz prostokąt wokół czegokolwiek: wykresu w filmie, zrzutu, komentarza.
 - Przed wysłaniem widzisz podgląd. Werdykty są **podświetlane na stronie** kolorem werdyktu, z dymkiem.
 
+<img src="docs/demo-pl-post-frame.webp" width="440" alt="Wynik pod postem na Facebooku: ramka Fact Checkera z oceną całości, werdyktami, opinią, źródłami i przyciskiem „Kopiuj jako odpowiedź”">
+
 **Co dostajesz**
 - **Ocena całości** nad kartami – jeden z pięciu nazwanych poziomów: *Rzetelny* · *Rzetelny, z drobnymi błędami* ·
   *Mieszany* · *Wprowadza w błąd* · *Nierzetelny*. Jedno-dwa zdania o tym, co tekst mówi i czy to się broni, a do tego
@@ -306,7 +308,7 @@ fakty historyczne), dostaje werdykt ze źródłami:
   (obcięte osie, wybrane zakresy), zrzuty postów i satyrę. Wyszukiwanie obrazem (Google Lens, TinEye, Yandex) – na zdjęcia
   wyrwane z kontekstu.
 
-![Post z memem na Facebooku sprawdzony w Operze: werdykty zaznaczone na obrazku i wyjaśnione w panelu, łącznie z tym, co w grafice wprowadza w błąd](docs/demo-pl-post-meme.webp)
+![Post z grafiką na X sprawdzony w Operze: ramka z wynikiem pod postem i ocena całości w panelu – liczby z grafiki się zgadzają, ale wniosek autora posta wprowadza w błąd](docs/demo-pl-post-x.webp)
 
 **Odpowiedź pod postem**
 - **📋 Kopiuj jako odpowiedź** – od razu *Oryginał* werdyktu (bez AI, za darmo); komentarz ludzkim językiem, dopasowany
@@ -315,7 +317,7 @@ fakty historyczne), dostaje werdykt ze źródłami:
 - **Cały post** – „Kopiuj jako odpowiedź” pod oceną całości daje jeden komentarz do wszystkich werdyktów, zaczynający
   od oceny całości i głównej tezy.
 
-<img src="docs/demo-pl-reply.webp" width="420" alt="Kopiuj jako odpowiedź: komentarz ludzkim językiem, dopasowany do posta, w tonie „Na luzie”">
+<img src="docs/demo-pl-reply.webp" width="420" alt="Kopiuj jako odpowiedź: jeden komentarz do całego posta w tonie „Rzeczowo”, z zakładkami Na luzie, Krótko pod X i Oryginał">
 
 ### Lepsze werdykty
 
@@ -330,6 +332,8 @@ fakty historyczne), dostaje werdykt ze źródłami:
 - **Pamięć werdyktów:** ten sam tekst albo obrazek (mem, który krąży od tygodni) dostaje wcześniejszy wynik od razu, bez
   kosztów. Każdy obrazek jest rozpoznawany osobno, także w innym poście; ten sam szablon mema z innym napisem już nie.
 - **Data wypowiedzi:** stary post czy wywiad jest oceniany według ówczesnych danych.
+
+![Artykuł z money.pl sprawdzony w Operze: data publikacji, rodzaj treści „Wiadomość”, ocena całości „Rzetelny” i uwaga, czego nie udało się potwierdzić w źródle urzędowym](docs/demo-pl-article.webp)
 
 ### Debaty i podcasty na żywo
 
