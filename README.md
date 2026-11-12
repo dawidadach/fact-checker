@@ -3,6 +3,8 @@
 Point at a Facebook or X post, a news article or a meme and get verdicts with sources, an overall rating, a scam warning and a
 ready reply to paste. It also checks debates and podcasts live.
 
+Developed by [Dawid Adach](https://github.com/dawidadach) and [Wojciech Kałużny](https://github.com/wojciechkaluzny-ctrl) · Projekt rozwijają Dawid Adach i Wojciech Kałużny.
+
 **[English](#english) · [Polski](#polski)**
 
 ### Install in 1 minute
@@ -253,6 +255,10 @@ npm run build    # dist/fact-checker-chrome.zip, dist/fact-checker-edge.zip, dis
 - **Lucide** icons – ISC License, `lib/LUCIDE-LICENSE.txt`.
 - **Mozilla Readability** – Apache License 2.0 (`lib/vendor/`).
 
+### Authors
+
+Fact Checker is developed by [Dawid Adach](https://github.com/dawidadach) and [Wojciech Kałużny](https://github.com/wojciechkaluzny-ctrl).
+
 ### Status
 
 Checking posts, images and replies was used on real Facebook and X posts and news articles with the ChatGPT plan; the live
@@ -446,6 +452,10 @@ npm run build    # dist/fact-checker-chrome.zip, dist/fact-checker-edge.zip, dis
 - Czcionka **Inter** (rsms/inter) – SIL Open Font License 1.1, `fonts/Inter-OFL.txt`.
 - Ikony **Lucide** – licencja ISC, `lib/LUCIDE-LICENSE.txt`.
 - **Mozilla Readability** – licencja Apache 2.0 (`lib/vendor/`).
+
+### Autorzy
+
+Fact Checkera rozwijają [Dawid Adach](https://github.com/dawidadach) i [Wojciech Kałużny](https://github.com/wojciechkaluzny-ctrl).
 
 ### Stan projektu
 
