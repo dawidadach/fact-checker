@@ -145,15 +145,37 @@
     text = clean(text);
     const alts = imgs.map(usefulAlt).filter(Boolean);
     if (alts.length) extra.alt = alts.join(" | ");
+    const links = linksIn(el, isPost ? el : null);
     return {
       kind: isPost ? "post" : !text && imgs.length ? "image" : "fragment",
       text,
       truncated,
       imageCount: imgs.length,
       imageSrcs: imgs.map(srcOf),
-      meta: { ...meta, author: extra.author || meta.author, date: extra.date || meta.date, url: extra.url || meta.url, ...(extra.alt ? { alt: extra.alt } : {}) },
+      meta: { ...meta, author: extra.author || meta.author, date: extra.date || meta.date, url: extra.url || meta.url, ...(extra.alt ? { alt: extra.alt } : {}), ...(links.length ? { links } : {}) },
       captureId,
     };
+  }
+  // Linki wychodzące z posta (do sprawdzenia, czy nie prowadzą na podróbkę): rozpakowane przekierowania serwisów,
+  // bez linków do samego serwisu (profile, hashtagi). Maks. 15.
+  const PLATFORM = /(^|\.)(facebook|fbcdn|instagram|messenger|whatsapp|x|twitter|twimg|tiktok|youtube|youtu|google|gstatic|linkedin|reddit|threads)\.(com|net|be)$/;
+  function linksIn(el, post = null) {
+    const out = new Set();
+    for (const a of el.querySelectorAll("a[href]")) {
+      if (post && postOf(a) !== post) continue;
+      let u;
+      try { u = new URL(a.href); } catch { continue; }
+      const inner = /(^|\.)facebook\.com$/.test(u.hostname) && u.pathname === "/l.php" ? u.searchParams.get("u")
+        : /(^|\.)google\.[a-z.]+$/.test(u.hostname) && u.pathname === "/url" ? u.searchParams.get("q") || u.searchParams.get("url")
+        : u.hostname === "t.co" ? (a.textContent || "").trim().replace(/…$/, "") : null;
+      if (inner) {
+        try { u = new URL(/^https?:/i.test(inner) ? inner : `https://${inner}`); } catch { continue; }
+      }
+      if (!/^https?:$/.test(u.protocol) || u.hostname === location.hostname || PLATFORM.test(u.hostname)) continue;
+      out.add(u.href.slice(0, 300));
+      if (out.size >= 15) break;
+    }
+    return [...out];
   }
   // Automatyczne opisy obrazków (Facebook: „Może być zdjęciem przedstawiającym tekst”, X: „Image”) nic nie mówią.
   const AUTO_ALT = /^(może być|moze byc|may be|brak dostępnego opisu|no photo description|image may contain|obraz może zawierać|to może być|this may be|image|obraz|obrazek|zdjęcie|photo|picture|grafika|graphic|mem|meme)(?!\p{L})/iu; // (?!\p{L}) zamiast \b – \b nie zna polskich liter
@@ -539,16 +561,16 @@
     return r;
   }
 
-  const TONES = ["good", "warn", "bad", "muted"];
+  const TONES = ["good", "warn", "bad", "muted", "trick"]; // trick – chwyt erystyczny (osobny kolor, nie werdykt)
   const TONE_COLORS = {
-    good: ["#e3f4ea", "#137a4b"], warn: ["#fdf1d6", "#8a5a00"], bad: ["#fbe4e2", "#b3261e"], muted: ["#eceef1", "#4b5563"],
+    good: ["#e3f4ea", "#137a4b"], warn: ["#fdf1d6", "#8a5a00"], bad: ["#fbe4e2", "#b3261e"], muted: ["#eceef1", "#4b5563"], trick: ["#efe9fb", "#5b3cc4"],
   };
   let marks = []; // { range | el | docRect, tone, label, claim, expl, quote, captureId }
 
   // Ramki z plakietką na obrazkach/wycinkach (tekstu w obrazku nie da się podświetlić).
   let imgHost = null, imgLayer = null, imgTimer = null;
-  const TONE_RANK = { bad: 3, warn: 2, good: 1, muted: 0 };
-  const TONE_BORDER = { good: "#137a4b", warn: "#c08a00", bad: "#c62828", muted: "#646c76" };
+  const TONE_RANK = { bad: 3, warn: 2, good: 1, muted: 0, trick: 0 };
+  const TONE_BORDER = { good: "#137a4b", warn: "#c08a00", bad: "#c62828", muted: "#646c76", trick: "#5b3cc4" };
   function rectOfMark(m) {
     if (m.el) return m.el.isConnected ? m.el.getBoundingClientRect() : null;
     if (m.docRect) { const d = m.docRect; return new DOMRect(d.x - scrollX, d.y - scrollY, d.w, d.h); }
