@@ -66,7 +66,7 @@ Each card shows the exact quote and who said it, the claim being checked, a shor
 - Images: the model reads the text, checks fake quotes, misleading charts (truncated axes, cherry-picked ranges), screenshots
   of posts and satire. Reverse image search buttons (Google Lens, TinEye, Yandex) for photos taken out of context.
 
-![A Facebook post with a meme checked in Opera: verdicts marked on the image and explained in the panel, including what is misleading in the graphic (Polish interface)](docs/demo-pl-post-meme.webp)
+![An X post with a video screenshot checked in Opera: the panel dates the footage from its caption and rates the claim “Misleading”, with the assessment, what supports it and the context](docs/demo-en-post-video.webp)
 
 **Better verdicts**
 - The model is told to prefer **primary sources** (e.g. for Poland: Sejm votes and transcripts, ISAP, GUS, NBP, Eurostat).
@@ -76,7 +76,7 @@ Each card shows the exact quote and who said it, the claim being checked, a shor
   Every image is recognised on its own — a meme checked inside a post is recognised later on its own or in another post — while
   the same meme template with a different caption is not.
 
-![A news article checked in Opera: the card shows the claim, the assessment, what supports it, the context, what is missing and the sources (Polish interface)](docs/demo-pl-article.webp)
+![A news article checked in Opera: verdicts highlighted in the text with a tooltip, and cards with the claim, the assessment, what supports it, the context and the sources](docs/demo-en-article.webp)
 
 **Working with the results**
 - **📋 Copy as reply** – a comment to paste under the post, written in plain language and matched to the post:
@@ -87,7 +87,7 @@ Each card shows the exact quote and who said it, the claim being checked, a shor
   print / save as PDF or download as HTML.
 - Filter **Only problems**, verdict counts per source, Markdown export.
 
-<img src="docs/demo-pl-reply.webp" width="420" alt="Copy as reply: a comment in plain language, matched to the post, in the “Casual” tone (Polish interface)">
+<img src="docs/demo-en-reply.webp" width="420" alt="Copy as reply: a comment in plain language in the “Matter-of-fact” tone, with tabs for Casual, Short for X and Original">
 
 **Sessions and history**
 - Everything you check goes into the current session, grouped by source; sessions are saved automatically.
