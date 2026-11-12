@@ -1,4 +1,8 @@
-import { buildRequest, buildTextRequest, chunkText, isDuplicate, parseImageNotes, parseResult, unsupportedFeature, VERDICTS } from "./lib/factcheck.js";
+import { buildRecheckRequest, buildRequest, buildTextRequest, chunkText, isDuplicate, parseImageNotes, parseResult, unsupportedFeature, VERDICTS } from "./lib/factcheck.js";
+import { parseTricks, trickName, TRICKS } from "./lib/tricks.js";
+import { sourceTier, TIER_TONE } from "./lib/sourcetier.js";
+import { scamHint, scamSignals } from "./lib/scam.js";
+import { certInfoStored, certList, lookup as certLookup } from "./lib/certlist.js";
 import { PageAccessError, runInTab, sameUrl } from "./lib/capture.js";
 import { callModel, KEY_PROVIDERS, listProviderModels, PROVIDERS, providerName } from "./lib/providers.js";
 import { LocalTranscriber, localEngine, MicTranscriber, TabTranscriber } from "./lib/transcribe.js";
@@ -6,7 +10,7 @@ import { deleteModel, detectDevice, getDownloaded, getModel, LANGS, MODELS, stor
 import { applyI18n, getLang, resolveLang, setLang, t } from "./lib/i18n.js";
 import {
   deleteSession, clearSessions, downloadMarkdown, fmtDate, getSession, hasContent, listSessions, matchesQuery,
-  putSession, sessionIcon, sessionTitle, verdictCounts, wordCount, lastActivity, isPageKind, sourceIcon, sourceTitle, cleanTitle,
+  putSession, scamLine, sessionIcon, sessionTitle, verdictCounts, wordCount, lastActivity, isPageKind, sourceIcon, sourceTitle, cleanTitle,
   ratedClaims, downloadFile,
 } from "./lib/history.js";
 import { addTo, emptyUsage, fmtTokens, fmtUsd, localDay, modeOf, MODES, priceFor, usageCost } from "./lib/pricing.js";
@@ -14,6 +18,7 @@ import { conflicts, FactCheckApiError, pickFactChecks, queryFor, ratingTone, sea
 import { clearMemory, contentKey, findImages, findInMemory, memoryCount, saveToMemory } from "./lib/memory.js";
 import { PROBLEM_VERDICTS } from "./lib/report.js";
 import { buildReplyRequest, composeReply, originalReply, parseReply, REPLY_TABS, templateReply, X_LIMIT, xLength } from "./lib/reply.js";
+import { buildSummaryRequest, GENRE_TONE, LEVEL_TONE, LEVELS, needsSummary, parseSummary, severityRank, summaryKey, validSummary } from "./lib/summary.js";
 
 const $ = (id) => document.getElementById(id);
 const DEFAULTS = {
@@ -29,6 +34,10 @@ const DEFAULTS = {
   rememberKeys: true,    // false → klucze tylko do zamknięcia przeglądarki (chrome.storage.session)
   maskPeople: false,     // zamazywanie zdjęć profilowych i nazw autorów na zrzutach + bez autora w tekście
   onlyProblems: false,   // filtr: tylko problematyczne werdykty
+  autoSummary: true,     // ocena całości artykułu / posta (od 2 twierdzeń) pisana od razu po werdyktach
+  tricks: true,          // chwyty erystyczne (fałszywy dylemat, atak na osobę…) – kilka procent tokenów więcej
+  scamCheck: true,       // sygnały oszustwa w adresie i treści – lokalnie, 0 tokenów
+  certList: true,        // Lista Ostrzeżeń CERT Polska – cały plik raz na 12 h, sprawdzanie u siebie
   replyTone: "plain",    // ostatnio używany ton odpowiedzi do wklejenia (rzeczowo / na luzie)
 };
 const SECRET_KEYS = ["apiKey", "keys"]; // to, co przy „nie zapamiętuj kluczy” trafia tylko do pamięci sesji przeglądarki
@@ -187,13 +196,21 @@ async function renderHistory() {
       claims: rec.claims?.length || 0, words: wordCount(rec.segments),
     });
     const counts = verdictCounts(rec.claims);
-    node.querySelector(".hist-pills").replaceChildren(...Object.entries(VERDICTS).filter(([k]) => counts[k]).map(([k, v]) => {
+    const levels = (rec.sources || []).map((src) => validSummary(src, (rec.claims || []).filter((c) => c.srcId === src.id))).filter(Boolean).slice(0, 3);
+    const nTricks = (rec.sources || []).reduce((a, src) => a + (src.tricks?.length || 0), 0);
+    const scam = (rec.sources || []).some((src) => src.scam?.level === "high") ? "high" : (rec.sources || []).some((src) => src.scam?.level) ? "medium" : "";
+    node.querySelector(".hist-pills").replaceChildren(...levels.map((x) => {
+      const p = Object.assign(document.createElement("span"), { className: "pill level", textContent: `📝 ${t(`level.${x.level}`)}`, title: x.headline });
+      p.dataset.tone = LEVEL_TONE[x.level] || "muted";
+      return p;
+    }), ...Object.entries(VERDICTS).filter(([k]) => counts[k]).map(([k, v]) => {
       const p = document.createElement("span");
       p.className = "pill";
       p.dataset.tone = v.tone;
       p.textContent = `${verdictLabel(k)}: ${counts[k]}`;
       return p;
-    }));
+    }), ...(nTricks ? [Object.assign(document.createElement("span"), { className: "pill trick", textContent: `🎭 ${nTricks}`, title: t("trick.title", { n: nTricks }) })] : []),
+    ...(scam ? [Object.assign(document.createElement("span"), { className: `pill scam ${scam}`, textContent: `⚠ ${t("scam.pill")}`, title: t(scam === "high" ? "scam.titleHigh" : "scam.titleMedium") })] : []));
     node.querySelector("[data-act=open]").onclick = () => openSession(rec.id);
     node.querySelector("[data-act=export]").onclick = () => downloadMarkdown(rec).catch((e) => console.error(e));
     node.querySelector("[data-act=report]").onclick = () => openReport(rec.id);
@@ -371,6 +388,11 @@ function fillSettingsForm() {
   $("fcStatus").hidden = true;
   $("memoryDays").value = S.memoryDays;
   $("maskPeople").checked = !!S.maskPeople;
+  $("autoSummary").checked = S.autoSummary !== false;
+  $("tricks").checked = S.tricks !== false;
+  $("scamCheck").checked = S.scamCheck !== false;
+  $("certList").checked = S.certList !== false;
+  renderCertInfo();
   $("rememberKeys").checked = S.rememberKeys !== false;
   renderMemInfo();
   for (const k of ["sttModel", "intervalSec", "chunkSec", "language", "uiLang"]) $(k).value = S[k];
@@ -382,6 +404,7 @@ function fillSettingsForm() {
     r.closest("label").classList.add("disabled");
   }
   renderModels();
+  renderEngineBox();
   const cur = draft.models[S.provider] || "";
   setModelOptions(modelCache[S.provider] || (cur ? [{ id: cur, name: cur }] : []), cur);
   renderCostSettings();
@@ -405,6 +428,10 @@ function readSettingsForm() {
   S.priceOut = $("priceOut").value.trim();
   S.memoryDays = clamp(Math.round(Number($("memoryDays").value) || 0), 0, 365);
   S.maskPeople = $("maskPeople").checked;
+  S.autoSummary = $("autoSummary").checked;
+  S.tricks = $("tricks").checked;
+  S.scamCheck = $("scamCheck").checked;
+  S.certList = $("certList").checked;
   S.rememberKeys = $("rememberKeys").checked;
   S.sessionGapH = clamp(Number($("sessionGap").value) || 0, 0, 72);
   S.sttModel = $("sttModel").value.trim() || DEFAULTS.sttModel;
@@ -488,24 +515,128 @@ async function renderModels() {
   $("deviceInfo").textContent = t(DEVICE === "gpu" ? "models.gpu" : "models.cpu");
 }
 
-async function downloadModel(id) {
-  if (downloads.size) return; // jeden na raz
+// Zwraca null, gdy model jest pobrany, albo treść błędu. onProgress – np. pasek w okienku „Zamiana mowy na tekst”.
+async function downloadModel(id, onProgress) {
+  if (downloads.size) return t("ss.busy"); // jeden na raz
   downloads.set(id, { loaded: 0, total: 0 });
   renderModels();
   let last = 0;
   try {
     await localEngine.load(id, DEVICE, (loaded, total) => {
       downloads.set(id, { loaded, total });
+      onProgress?.(loaded, total);
       if (Date.now() - last > 300) { last = Date.now(); renderModels(); }
     });
     if (!S.localModel || !(await getDownloaded())[S.localModel]) { S.localModel = id; await saveSettings(); }
   } catch (e) {
     $("deviceInfo").textContent = t("models.failed", { msg: e.message });
     downloads.delete(id);
-    return;
+    renderModels();
+    return e.message || String(e);
   }
   downloads.delete(id);
   renderModels();
+  return null;
+}
+
+function renderEngineBox() {
+  const eng = document.querySelector("input[name=engine]:checked")?.value || "local";
+  $("modelsBox").hidden = eng !== "local";
+  $("sttModelRow").hidden = eng !== "openai";
+  $("engineHint").textContent = t(`set.engineHint.${eng}`);
+}
+
+// ---------- „Zamiana mowy na tekst”: okienko przy Start, gdy słuchanie nie jest gotowe ----------
+// Sprawdzanie tekstu i obrazków działa bez tego – model mowy jest potrzebny dopiero do słuchania.
+// Zwraca powód, dla którego nie da się zacząć, albo null. Pobrany model pasujący do języka rozmowy wybiera sam.
+async function sttProblem() {
+  if (S.engine === "openai") return S.src !== "tab" ? "openaiMic" : !S.apiKey ? "noKey" : null;
+  if (S.engine === "chrome" && !IS_OPERA) return S.src === "tab" ? "chromeTab" : null;
+  const have = await getDownloaded();
+  const cur = getModel(S.localModel);
+  if (S.engine === "local" && cur && have[cur.id]) return null;
+  const fit = MODELS.find((m) => have[m.id] && (m.multilingual || m.lang === S.language));
+  if (fit) {
+    Object.assign(S, { engine: "local", localModel: fit.id });
+    await saveSettings();
+    return null;
+  }
+  return "noModel";
+}
+// Zalecany model: do języka rozmowy; z kartą graficzną najlepszy, bez niej – średni (szybki na zwykłym laptopie).
+function recommendedModels() {
+  const lang = S.language === "en" ? "en" : "pl";
+  const pick = (tier) => MODELS.find((m) => m.lang === lang && m.tier === tier);
+  const main = DEVICE === "gpu" ? pick("best") : pick("mid");
+  const lighter = DEVICE === "gpu" ? pick("mid") : pick("light");
+  return { main, lighter };
+}
+const ss = { model: null, ready: false };
+async function openSttSetup(why) {
+  const d = $("sttSetup");
+  applyI18n(d);
+  $("ssWhy").textContent = t(`ss.why.${why}`);
+  const { main, lighter } = recommendedModels();
+  const have = await getDownloaded();
+  const fit = MODELS.find((m) => have[m.id] && (m.multilingual || m.lang === S.language)); // już pobrany (np. wybrany był OpenAI)
+  const busy = [...downloads.keys()][0];
+  ss.model = fit || getModel(busy) || (ss.model?.lang === main.lang ? ss.model : main);
+  ss.ready = !!fit;
+  document.querySelector("#ssLocal .ss-badge").hidden = !fit && ss.model.id !== main.id; // „zalecany” – tylko przy zalecanym
+  const sizeOf = (m) => mb(m.size[DEVICE]);
+  $("ssLocalInfo").textContent = fit ? t("ss.localHave", { name: fit.name })
+    : t("ss.localInfo", { name: ss.model.name, size: sizeOf(ss.model), note: ss.model.note[getLang()] || ss.model.note.en });
+  $("ssLighter").hidden = !!fit || !lighter || ss.model.id === lighter.id || !!busy;
+  if (lighter) $("ssLighter").textContent = t("ss.lighter", { name: lighter.name, size: sizeOf(lighter) });
+  $("ssLighter").onclick = () => { ss.model = lighter; openSttSetup(why); };
+  $("ssProg").hidden = !busy;
+  $("ssLocalStatus").hidden = !busy;
+  $("ssDownload").disabled = !!busy;
+  $("ssDownload").textContent = fit ? `▶ ${t("ss.useStart")}` : busy ? t("ss.downloading") : t("ss.download", { size: sizeOf(ss.model) });
+  // OpenAI – tylko dźwięk karty; wbudowane – tylko mikrofon (nie w Operze)
+  $("ssOpenai").hidden = S.src !== "tab";
+  $("ssOpenaiInfo").textContent = t(S.apiKey ? "ss.openaiInfo" : "ss.openaiNoKey");
+  $("ssUseOpenai").textContent = t(S.apiKey ? "ss.useStart" : "ss.addKey");
+  $("ssChrome").hidden = IS_OPERA || S.src !== "mic";
+  if (!d.open) d.showModal();
+}
+async function ssDownload() {
+  if (ss.ready) { // kliknięcie = gest użytkownika (zgoda na kartę / mikrofon)
+    Object.assign(S, { engine: "local", localModel: ss.model.id });
+    await saveSettings();
+    $("sttSetup").close();
+    start();
+    return;
+  }
+  const m = ss.model;
+  $("ssDownload").disabled = true;
+  $("ssDownload").textContent = t("ss.downloading");
+  $("ssLighter").hidden = true;
+  const prog = $("ssProg"), st = $("ssLocalStatus");
+  prog.hidden = false; prog.removeAttribute("value");
+  st.hidden = false; st.classList.remove("warn"); st.textContent = t("ss.keepOpen");
+  const err = await downloadModel(m.id, (loaded, total) => {
+    if (!total) return;
+    prog.max = total; prog.value = loaded;
+    st.textContent = t("ss.progress", { pct: Math.round((100 * loaded) / total), size: mb(m.size[DEVICE]) });
+  });
+  if (err) {
+    prog.hidden = true;
+    st.textContent = t("models.failed", { msg: err });
+    st.classList.add("warn");
+    $("ssDownload").disabled = false;
+    $("ssDownload").textContent = t("ss.retry");
+    return;
+  }
+  Object.assign(S, { engine: "local", localModel: m.id });
+  await saveSettings();
+  if (!$("sttSetup").open) { setStatus(t("ss.doneClosed", { name: m.name })); return; }
+  ss.ready = true;
+  prog.hidden = true;
+  st.textContent = t("ss.done", { name: m.name });
+  $("ssDownload").disabled = false;
+  $("ssDownload").textContent = `▶ ${t("ss.startNow")}`;
+  $("ssDownload").focus();
 }
 
 // ---------- konto ChatGPT ----------
@@ -629,6 +760,7 @@ function groupEl(srcId, { create = true } = {}) {
     g.className = "src-group";
     g.dataset.src = srcId;
     g.append(document.createElement("header"), Object.assign(document.createElement("div"), { className: "cards" }),
+      Object.assign(document.createElement("div"), { className: "tricks", hidden: true }),
       Object.assign(document.createElement("p"), { className: "src-note muted" }));
     renderGroupHead(g);
     $("empty").after(g);
@@ -684,6 +816,12 @@ function renderGroupHead(g) {
     }
     head.append(mem);
   }
+  renderTricks(g, src);
+  if (src.scam?.level && S.scamCheck !== false) head.append(scamEl(src.scam));
+  const sum = summaryState(src, mine);
+  g.classList.toggle("summarised", sum?.status === "ready");
+  if (sum) head.append(summaryEl(g, src, sum, mine));
+  arrangeCards(g, mine);
   const hidden = S.onlyProblems ? mine.filter((c) => !PROBLEM_VERDICTS.includes(c.verdict)).length : 0;
   if (hidden) head.append(Object.assign(document.createElement("div"), { className: "src-hidden muted", textContent: t("filter.hiddenN", { n: hidden }) }));
   if (src.images?.length) head.append(imagesEl(src));
@@ -703,6 +841,257 @@ function renderGroupHead(g) {
     head.append(det);
   }
 }
+// ---------- ocena całości (lib/summary.js) ----------
+// Artykuł, post, mem, infografika: poziom (5 nazwanych stopni), jedno-dwa zdania i punkty ✓ ✗ ⚠ nad kartami.
+// Model pisze ją po werdyktach, osobnym zapytaniem bez wyszukiwania. Gdy jest gotowa, karty zwijają się do jednej
+// linii (problemy na górze) – szczegóły po kliknięciu. Dla dźwięku nie ma (tam jest raport).
+const summaryJobs = new Map(); // srcId → odcisk werdyktów, dla którego trwa pisanie
+const memKeys = new Map();     // srcId → klucz w pamięci werdyktów (żeby dopisać do niej podsumowanie)
+const openCards = new Set();   // id kart rozwiniętych w źródle z podsumowaniem
+const rechecking = new Set();       // „Sprawdź dokładniej”: id twierdzeń sprawdzanych właśnie od nowa
+const recheckErrors = new Map();    // id → błąd ostatniej próby (nie trafia do historii)
+function summaryState(src, claims = state.claims.filter((c) => c.srcId === src.id)) {
+  if (!needsSummary(src, claims)) return null;
+  const key = summaryKey(claims);
+  if (summaryJobs.get(src.id) === key) return { status: "pending" };
+  if (activity.on && activity.srcId === src.id) return null; // jeszcze sprawdzamy – ocena przyjdzie po werdyktach
+  const s = src.summary;
+  if (s?.key === key && s.headline) return { status: "ready", s };
+  if (s?.key === key && s.error) return { status: "error", s };
+  return { status: "missing" };
+}
+function summaryEl(g, src, st, claims) {
+  const box = document.createElement("div");
+  box.className = `src-sum ${st.status}`;
+  if (st.status === "pending") {
+    box.append(Object.assign(document.createElement("span"), { className: "sum-wait", textContent: t("sum.pending") }));
+    return box;
+  }
+  if (st.status !== "ready") {
+    if (st.status === "error") box.append(Object.assign(document.createElement("p"), { className: "sum-err", textContent: t("sum.error", { msg: st.s.error }) }));
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "small", textContent: st.status === "error" ? `↻ ${t("sum.retry")}` : `📝 ${t("sum.make")}` });
+    b.onclick = () => maybeSummarize(src, { force: true });
+    box.append(b);
+    return box;
+  }
+  const s = st.s;
+  box.dataset.tone = LEVEL_TONE[s.level] || "muted";
+  const top = Object.assign(document.createElement("div"), { className: "sum-top" });
+  const again = Object.assign(document.createElement("button"), { type: "button", className: "icon small sum-again", textContent: "↻", title: t("sum.regen") });
+  again.setAttribute("aria-label", t("sum.regen"));
+  again.onclick = () => maybeSummarize(src, { force: true });
+  top.append(Object.assign(document.createElement("span"), { className: "sum-cap", textContent: t("sum.title") }), again,
+    Object.assign(document.createElement("span"), { className: "sum-break" }));
+  const level = Object.assign(document.createElement("span"), { className: "sum-level", textContent: t(`level.${s.level}`) });
+  top.append(level);
+  const pos = LEVELS.indexOf(s.level);
+  if (pos >= 0) {
+    const scale = Object.assign(document.createElement("span"), { className: "sum-scale", title: LEVELS.map((l) => t(`level.${l}`)).join(" → ") });
+    scale.setAttribute("aria-hidden", "true");
+    scale.append(...LEVELS.map((_, i) => Object.assign(document.createElement("i"), { className: i === pos ? "on" : "" })));
+    top.append(scale);
+  }
+  if (s.genre && s.genre !== "inne") {
+    const genre = Object.assign(document.createElement("span"), { className: "sum-genre", textContent: t(`genre.${s.genre}`), title: t("genre.title") });
+    if (GENRE_TONE[s.genre]) genre.dataset.tone = GENRE_TONE[s.genre];
+    top.append(genre);
+  }
+  box.append(top, Object.assign(document.createElement("p"), { className: "sum-head", textContent: s.headline }));
+  const ul = document.createElement("ul");
+  ul.className = "sum-pts";
+  for (const [cls, mark, list] of [["ok", "✓", s.ok], ["wrong", "✗", s.wrong], ["ctx", "⚠", s.context], ["side", "⚖", s.side ? [s.side] : []]]) {
+    for (const x of list || []) {
+      const li = document.createElement("li");
+      li.className = cls;
+      li.append(Object.assign(document.createElement("b"), { textContent: mark }), ` ${x}`);
+      ul.append(li);
+    }
+  }
+  if (ul.children.length) box.append(ul);
+  const foot = Object.assign(document.createElement("div"), { className: "sum-foot" });
+  foot.append(Object.assign(document.createElement("span"), { className: "muted", textContent: t(claims.length === 1 ? "sum.scope1" : "sum.scope", { n: claims.length }) }));
+  const all = g.classList.contains("open-all");
+  const tog = Object.assign(document.createElement("button"), { type: "button", className: "small", textContent: t(all ? "sum.collapseAll" : "sum.expandAll") });
+  tog.setAttribute("aria-expanded", String(all));
+  tog.onclick = () => { g.classList.toggle("open-all"); renderGroupHead(g); };
+  foot.append(tog);
+  box.append(foot);
+  return box;
+}
+// Kolejność kart: w źródle z podsumowaniem najpierw problemy (potem prawda), w pozostałych – najnowsze na górze.
+function arrangeCards(g, claims) {
+  if (!g.classList.contains("summarised")) return;
+  const list = g.querySelector(".cards");
+  const byId = new Map(claims.map((c) => [c.id, c]));
+  const nodes = [...list.children].filter((n) => n.classList.contains("card") && !n.classList.contains("skeleton"));
+  const sorted = [...nodes].sort((a, b) => {
+    const A = byId.get(a.dataset.cid) || {}, B = byId.get(b.dataset.cid) || {};
+    return severityRank(A.verdict) - severityRank(B.verdict) || (B.t || 0) - (A.t || 0);
+  });
+  if (sorted.some((n, i) => n !== nodes[i])) list.append(...sorted);
+}
+function rerenderHead(src) {
+  const g = groupEl(src.id, { create: false });
+  if (g) renderGroupHead(g);
+}
+// Po werdyktach (i przy każdej zmianie zestawu werdyktów) – automatycznie, chyba że wyłączone w ⚙.
+function maybeSummarize(src, { force = false } = {}) {
+  if (!src || !session.sources.includes(src)) return;
+  const claims = state.claims.filter((c) => c.srcId === src.id);
+  if (!needsSummary(src, claims)) return;
+  const key = summaryKey(claims);
+  if (summaryJobs.get(src.id) === key) return;
+  if (!force && src.summary?.key === key && (src.summary.headline || src.summary.error)) return;
+  if (!force && S.autoSummary === false) { rerenderHead(src); return; }
+  summarize(src, claims, key);
+}
+async function summarize(src, claims, key) {
+  summaryJobs.set(src.id, key);
+  rerenderHead(src);
+  let result;
+  try {
+    if (limitReached()) throw new Error(t("rp.limit"));
+    await ensureModel();
+    let structured = PROVIDERS[S.provider]?.structured !== false && !state.disabled.has("structured");
+    const view = { ...src, text: S.maskPeople ? maskHandles(src.text || "") : src.text };
+    let res;
+    for (let attempt = 0; ; attempt++) {
+      const body = buildSummaryRequest({ model: S.model, src: view, claims, lang: getLang(), structured });
+      try {
+        res = await callModel({ provider: S.provider, key: await getToken(), body, timeoutMs: 90_000, idleMs: 45_000 });
+        break;
+      } catch (e) {
+        if (structured && unsupportedFeature(e) === "structured" && attempt < 1) { structured = false; continue; }
+        throw e;
+      }
+    }
+    recordUsage(res.usage).catch((e) => console.warn(e));
+    const parsed = parseSummary(res.text, claims, src.imageNotes || []);
+    if (!parsed) throw new Error(t("sum.empty"));
+    result = { key, ...parsed, at: Date.now(), model: S.model };
+  } catch (e) {
+    console.warn(e);
+    result = { key, error: e.message || String(e) };
+  } finally {
+    if (summaryJobs.get(src.id) === key) summaryJobs.delete(src.id);
+  }
+  if (!session.sources.includes(src)) return; // źródło usunięte („Sprawdź ponownie”, nowa sesja)
+  if (summaryKey(state.claims.filter((c) => c.srcId === src.id)) !== key) { maybeSummarize(src); return; } // werdykty się zmieniły
+  src.summary = result;
+  touchSession();
+  if (result.headline) saveMemory(src, { reused: !!src.fromMemory });
+  rerenderHead(src);
+}
+
+// ---------- chwyty erystyczne (lib/tricks.js) ----------
+// Nie werdykt: pokazują sposób argumentowania. Model zwraca numer chwytu, cytat i zdanie „dlaczego”;
+// definicję i „jak odpowiedzieć” ma wtyczka (0 tokenów).
+let trickSeq = 0;
+const newTrickId = () => `t${Date.now().toString(36)}${++trickSeq}`;
+const trickMax = (audio) => (S.tricks === false ? 0 : audio ? 2 : 3);
+const closedTricks = new Set(); // źródła ze zwiniętą listą chwytów
+function addTricks(src, list) {
+  if (!src || !list.length) return;
+  const now = Date.now();
+  src.tricks = [...(src.tricks || []), ...list.map((x) => ({ ...x, id: newTrickId(), srcId: src.id, t: now }))];
+  const g = groupEl(src.id, { create: false });
+  if (g) renderGroupHead(g);
+  touchSession();
+}
+function renderTricks(g, src) {
+  const box = g.querySelector(".tricks");
+  if (!box) return;
+  const list = src.tricks || [];
+  const lang = getLang();
+  const sig = `${lang}|${list.map((x) => `${x.id}${x.inPage === false ? "-" : ""}`).join(",")}|${closedTricks.has(src.id)}|${!!src.tricksChecked}|${S.tricks !== false}`;
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  if (!list.length) {
+    // sprawdzane, ale nic wyraźnego – krótka linijka, żeby było widać, że funkcja działa
+    box.hidden = !src.tricksChecked || S.tricks === false;
+    box.replaceChildren(Object.assign(document.createElement("p"), { className: "tricks-none hint", textContent: `🎭 ${t("trick.none")}`, title: t("trick.noneHint") }));
+    return;
+  }
+  box.hidden = false;
+  const det = Object.assign(document.createElement("details"), { open: !closedTricks.has(src.id) });
+  det.addEventListener("toggle", () => { if (det.open) closedTricks.delete(src.id); else closedTricks.add(src.id); box.dataset.sig = ""; });
+  const sum = document.createElement("summary");
+  sum.append(Object.assign(document.createElement("b"), { textContent: `🎭 ${t("trick.title", { n: list.length })}` }));
+  det.append(sum, Object.assign(document.createElement("p"), { className: "hint trick-note", textContent: t("trick.note") }));
+  for (const x of list) {
+    const d = TRICKS[x.trick];
+    if (!d) continue;
+    const item = Object.assign(document.createElement("div"), { className: "trick" });
+    const head = Object.assign(document.createElement("div"), { className: "trick-head" });
+    head.append(Object.assign(document.createElement("span"), { className: "trick-name", textContent: trickName(x.trick, lang) }));
+    if (x.speaker) head.append(Object.assign(document.createElement("span"), { className: "muted", textContent: x.speaker }));
+    if (isPageKind(src.kind) && x.inPage !== false && x.quote) {
+      const go = Object.assign(document.createElement("button"), { type: "button", className: "goto", textContent: t("page.show") });
+      go.onclick = () => showInPage(x);
+      head.append(go);
+    }
+    const more = document.createElement("details");
+    more.className = "trick-more";
+    more.append(Object.assign(document.createElement("summary"), { textContent: t("trick.more") }),
+      Object.assign(document.createElement("p"), { textContent: d.def[lang] || d.def.en }));
+    const ans = document.createElement("p");
+    ans.append(Object.assign(document.createElement("b"), { textContent: `${t("trick.answer")} ` }), d.answer[lang] || d.answer.en);
+    more.append(ans);
+    item.append(head, Object.assign(document.createElement("blockquote"), { className: "quote", textContent: `„${x.quote}”` }),
+      Object.assign(document.createElement("p"), { className: "trick-why", textContent: x.why }), more);
+    det.append(item);
+  }
+  box.replaceChildren(det);
+}
+
+// ---------- sygnały oszustwa (lib/scam.js) i Lista Ostrzeżeń CERT (lib/certlist.js) ----------
+// Lokalnie, bez modelu. Model dostaje krótką wskazówkę tylko wtedy, gdy coś się znalazło.
+const TRUSTED_TIERS = ["media", "dokument", "dane", "urzad", "nauka", "factcheck", "encyklopedia"];
+let certData = null; // przygotowana lista (tekst z \n…\n) albo null
+function loadCert({ wait = false, force = false } = {}) {
+  if (S.certList === false) return Promise.resolve(null);
+  return certList({
+    wait, force,
+    onLoaded: (c) => { // lista dotarła później niż sprawdzenie – przelicz ostrzeżenia
+      certData = c;
+      for (const src of session.sources) if (isPageKind(src.kind)) { computeScam(src); rerenderHead(src); }
+      if ($("settings").open) renderCertInfo();
+    },
+  }).then((c) => (certData = c)).catch(() => null);
+}
+function computeScam(src) {
+  if (!isPageKind(src.kind) || S.scamCheck === false) { delete src.scam; return null; }
+  const meta = src.meta || {};
+  const pageUrl = src.pageUrl || meta.pageUrl || src.url || "";
+  const text = [src.text, meta.alt, ...(src.imageNotes || []).map((n) => n.text)].filter(Boolean).join("\n");
+  const res = scamSignals({
+    pageUrl, siteName: meta.site, links: meta.links || [], text, kind: src.kind,
+    trustedPage: TRUSTED_TIERS.includes(sourceTier(pageUrl)),
+    cert: S.certList !== false && certData ? (h) => certLookup(certData, h) : null,
+  });
+  if (res.level) src.scam = { ...res, at: Date.now() };
+  else delete src.scam;
+  return src.scam || null;
+}
+function scamEl(scam) {
+  const box = Object.assign(document.createElement("div"), { className: `scam-box ${scam.level}` });
+  box.setAttribute("role", "note");
+  box.append(Object.assign(document.createElement("b"), { className: "scam-title", textContent: `⚠ ${t(scam.level === "high" ? "scam.titleHigh" : "scam.titleMedium")}` }));
+  const ul = document.createElement("ul");
+  for (const s of scam.signals.slice(0, 6)) ul.append(Object.assign(document.createElement("li"), { textContent: scamLine(s) }));
+  box.append(ul, Object.assign(document.createElement("p"), { className: "scam-advice", textContent: t("scam.advice") }));
+  const rep = Object.assign(document.createElement("p"), { className: "scam-report" });
+  rep.append(`${t("scam.report")} `, Object.assign(document.createElement("a"), { href: "https://incydent.cert.pl/", target: "_blank", rel: "noopener noreferrer", textContent: "incydent.cert.pl" }), ` · ${t("scam.reportSms")}`);
+  box.append(rep, Object.assign(document.createElement("p"), { className: "hint", textContent: t("scam.note") }));
+  return box;
+}
+async function renderCertInfo() {
+  const el = $("certInfo");
+  if (!el) return;
+  const info = await certInfoStored().catch(() => null);
+  el.textContent = info ? t("set.certInfo", { n: info.n.toLocaleString(getLang() === "pl" ? "pl-PL" : "en-US"), date: fmtDate(info.at) }) : t("set.certNone");
+}
+
 // Liczniki werdyktów („Prawda: 3 · Fałsz: 2”).
 function pillsEl(claims, className) {
   const counts = verdictCounts(claims);
@@ -870,7 +1259,23 @@ function cardEl(c) {
     a.href = s.url; a.target = "_blank"; a.rel = "noopener noreferrer";
     a.textContent = s.title || new URL(s.url).hostname;
     li.append(a);
+    const tier = sourceTier(s.url); // poziom źródła po domenie – bez modelu
+    if (tier) {
+      const b = Object.assign(document.createElement("span"), { className: "tier", textContent: t(`tier.${tier}`), title: t(`tierHint.${tier}`) });
+      b.dataset.tone = TIER_TONE[tier];
+      li.append(" ", b);
+    }
     ul.append(li);
+  }
+  const rn = node.querySelector(".recheck-note");
+  const err = recheckErrors.get(c.id);
+  if (rechecking.has(c.id)) { rn.hidden = false; rn.classList.add("busy"); rn.textContent = t("rc.running"); }
+  else if (err) { rn.hidden = false; rn.classList.add("warn"); rn.textContent = `⚠ ${t("rc.failed", { msg: err })}`; }
+  else if (c.recheck) {
+    const by = `${providerName(c.recheck.provider)} · ${c.recheck.model || "?"}`;
+    rn.hidden = false;
+    rn.textContent = `🔍 ${c.recheck.prev?.verdict && c.recheck.prev.verdict !== c.verdict
+      ? t("rc.noteChanged", { by, from: verdictLabel(c.recheck.prev.verdict) }) : t("rc.noteSame", { by })}`;
   }
   const go = node.querySelector(".goto");
   const cSrc = findSource(c.srcId);
@@ -881,7 +1286,28 @@ function cardEl(c) {
   }
   if (c.factchecks?.length) node.querySelector(".fc-box").replaceWith(factChecksEl(c));
   wireCardFoot(node, c);
+  wireFold(node, c);
   return node;
+}
+// W źródle z oceną całości karta jest zwinięta do werdyktu i twierdzenia; klik rozwija szczegóły.
+function wireFold(node, c) {
+  const fold = node.querySelector(".fold");
+  const paint = () => {
+    const open = openCards.has(c.id);
+    node.classList.toggle("open", open);
+    fold.setAttribute("aria-expanded", String(open));
+    fold.title = t(open ? "card.fold" : "card.unfold");
+    fold.setAttribute("aria-label", fold.title);
+  };
+  const toggle = () => { if (openCards.has(c.id)) openCards.delete(c.id); else openCards.add(c.id); paint(); };
+  fold.onclick = (e) => { e.stopPropagation(); toggle(); };
+  node.addEventListener("click", (e) => {
+    const g = node.closest(".src-group");
+    if (!g?.classList.contains("summarised") || g.classList.contains("open-all") || node.classList.contains("open")) return;
+    if (e.target.closest("a, button, textarea, input")) return;
+    toggle();
+  });
+  paint();
 }
 
 // Co o tym twierdzeniu napisały redakcje fact-checkingowe (Google Fact Check Tools).
@@ -938,7 +1364,107 @@ function wireCardFoot(node, c) {
   box.querySelector(".fb-done").onclick = () => { box.hidden = true; paint(); setStatus(t("fb.saved")); };
   note.onclick = () => { box.hidden = false; ta.value = c.feedback?.comment || ""; paint(); ta.focus(); };
   copy.onclick = () => openReply([c], findSource(c.srcId));
+  // 👎 → „Sprawdź dokładniej” (ten sam albo inny skonfigurowany dostawca)
+  const more = box.querySelector(".fb-more"), rb = more.querySelector(".recheck"), by = more.querySelector(".recheck-by"), sel = by.querySelector("select");
+  rb.textContent = `🔍 ${t("rc.button")}`;
+  rb.title = t("rc.hint");
+  by.querySelector("span").textContent = t("rc.by");
+  const alts = recheckProviders();
+  by.hidden = alts.length < 2;
+  sel.replaceChildren(...alts.map((a) => new Option(a.label, a.provider)));
+  rb.onclick = () => {
+    if (c.feedback) c.feedback.comment = ta.value.slice(0, 1000);
+    box.hidden = true;
+    paint();
+    recheckClaim(c, sel.value || S.provider);
+  };
+  const paintMore = () => { more.hidden = !(c.feedback?.rating < 0); rb.disabled = rechecking.has(c.id); };
+  up.addEventListener("click", paintMore);
+  down.addEventListener("click", paintMore);
   paint();
+  paintMore();
+}
+
+// ---------- „Sprawdź dokładniej” ----------
+// Dostawcy do „drugiej opinii”: bieżący + inni z kluczem i wybranym kiedyś modelem.
+function recheckProviders() {
+  const out = [{ provider: S.provider, label: `${providerName(S.provider)} · ${S.model || "?"}` }];
+  for (const p of Object.keys(PROVIDERS)) {
+    if (p === S.provider || p === "chatgpt") continue;
+    const hasKey = p === "apikey" ? !!S.apiKey : !!S.keys?.[p];
+    if (hasKey && S.models?.[p]) out.push({ provider: p, label: `${providerName(p)} · ${S.models[p]}` });
+  }
+  return out;
+}
+function repaintCard(c) {
+  const old = $("feed").querySelector(`.card[data-cid="${CSS.escape(c.id)}"]`);
+  if (old) old.replaceWith(cardEl(c));
+}
+const CLAIM_FIELDS = ["claim", "verdict", "confidence", "explanation", "evidence", "counter_evidence", "missing_data", "sources",
+  "visual_issues", "keywords", "category", "provider", "model", "mode"];
+async function recheckClaim(c, provider = S.provider) {
+  if (rechecking.has(c.id)) return;
+  if (limitReached()) { showLimitBanner(); return; }
+  const src = findSource(c.srcId);
+  rechecking.add(c.id);
+  recheckErrors.delete(c.id);
+  repaintCard(c);
+  setStatus(t("rc.running"), "busy");
+  const prevVerdict = c.verdict;
+  try {
+    if (provider === S.provider) await ensureModel();
+    const who = { provider, model: provider === S.provider ? S.model : S.models[provider] };
+    let webSearch = S.webSearch && !(provider === S.provider && state.disabled.has("webSearch"));
+    let structured = PROVIDERS[provider]?.structured !== false && !(provider === S.provider && state.disabled.has("structured"));
+    const view = src ? { ...src, text: S.maskPeople ? maskHandles(src.text || "") : src.text } : {};
+    let res;
+    for (let attempt = 0; ; attempt++) {
+      const body = buildRecheckRequest({
+        model: who.model, today: new Date().toISOString().slice(0, 10), webSearch, structured, outLang: getLang(),
+        claim: c, src: view, note: c.feedback?.comment || "", maxSearches: modeOf("thorough").searches,
+      });
+      try {
+        res = await callModel({ provider, key: await getToken(provider), body, timeoutMs: 240_000, idleMs: 120_000 });
+        break;
+      } catch (e) {
+        const f = unsupportedFeature(e);
+        if (attempt < 2 && f === "webSearch" && webSearch) { webSearch = false; continue; }
+        if (attempt < 2 && f === "structured" && structured) { structured = false; continue; }
+        throw e;
+      }
+    }
+    recordUsage(res.usage, who).catch((e) => console.warn(e));
+    const [r] = parseResult(res.text);
+    if (!r) throw new Error(t("rc.empty"));
+    if (!r.sources.length) r.sources = (res.citations || []).slice(0, 5);
+    const prev = Object.fromEntries(CLAIM_FIELDS.filter((k) => c[k] !== undefined).map((k) => [k, c[k]]));
+    Object.assign(c, {
+      claim: r.claim || c.claim, verdict: r.verdict, confidence: r.confidence, explanation: r.explanation, evidence: r.evidence,
+      counter_evidence: r.counter_evidence, missing_data: r.missing_data, sources: r.sources, keywords: r.keywords || c.keywords,
+      category: r.category || c.category, provider: who.provider, model: who.model, mode: "thorough",
+      recheck: { at: Date.now(), prev, provider: who.provider, model: who.model, note: c.feedback?.comment || "" },
+    });
+    if (r.visual_issues) c.visual_issues = r.visual_issues;
+    if (c.factchecks?.length) c.fcConflict = conflicts(VERDICTS[c.verdict]?.tone, c.factchecks);
+    setStatus(c.verdict === prevVerdict ? t("rc.same", { v: verdictLabel(c.verdict) }) : t("rc.changed", { from: verdictLabel(prevVerdict), to: verdictLabel(c.verdict) }));
+  } catch (e) {
+    console.warn(e);
+    recheckErrors.set(c.id, e.message || String(e));
+    setStatus(t("rc.failed", { msg: e.message || String(e) }));
+  } finally {
+    rechecking.delete(c.id);
+  }
+  repaintCard(c);
+  const g = groupEl(c.srcId, { create: false });
+  if (g) renderGroupHead(g);
+  renderSummary();
+  touchSession();
+  saveSessionNow();
+  if (src && c.recheck && !recheckErrors.has(c.id)) {
+    saveMemory(src);
+    maybeSummarize(src);
+    if (isPageKind(src.kind)) highlightSource(src);
+  }
 }
 
 function addCard(c) {
@@ -1047,7 +1573,7 @@ function actStop(newClaims = 0) {
   activity.on = false;
   const g = srcId && groupEl(srcId, { create: false });
   g?.querySelector(".card.skeleton")?.remove();
-  if (g) renderGroupNote(g);
+  if (g) { renderGroupHead(g); renderGroupNote(g); }
   if (state.running) setBadge("listening");
   else if (newClaims > 0) setBadge("done", newClaims);
   else setBadge("");
@@ -1246,9 +1772,17 @@ async function loadDayUsage() {
   dayUsage = usage?.day === localDay() ? { ...emptyUsage(), ...usage } : { day: localDay(), ...emptyUsage() };
 }
 const priceOverride = () => ({ in: S.priceIn, out: S.priceOut });
-async function recordUsage(usage) {
-  if (!usage) return;
-  const cost = usageCost(S.provider, S.model, usage, priceOverride());
+// Po kolei: dwa zapytania kończące się naraz (np. sprawdzenie i ocena całości) nie mogą nadpisać sobie dziennej sumy.
+let usageChain = Promise.resolve();
+function recordUsage(usage, who) {
+  if (!usage) return Promise.resolve();
+  const run = usageChain.then(() => recordUsageNow(usage, who));
+  usageChain = run.catch(() => {});
+  return run;
+}
+async function recordUsageNow(usage, who = {}) {
+  const p = who.provider || S.provider, m = who.model || S.model;
+  const cost = usageCost(p, m, usage, p === S.provider && m === S.model ? priceOverride() : {});
   session.usage = addTo(session.usage, usage, cost);
   await loadDayUsage(); // świeży odczyt – kilka okien panelu liczy wspólnie
   dayUsage = { ...addTo(dayUsage, usage, cost), day: localDay() };
@@ -1320,6 +1854,8 @@ async function backfillMemory() {
         await saveToMemory({
           key, at: src.at, lang: getLang(), provider: claims.find((c) => c.provider)?.provider || "", model: claims.find((c) => c.model)?.model || s.model || "",
           kind: src.kind, title: src.title, claims: claims.map(stripClaim), imageNotes: src.imageNotes || [], backfill: true,
+          ...(validSummary(src, claims) ? { summary: validSummary(src, claims) } : {}),
+          ...(src.tricks?.length ? { tricks: src.tricks.map(({ trick, quote, speaker, why }) => ({ trick, quote, speaker, why })) } : {}),
         });
         added++;
       } catch (e) { console.warn(e); }
@@ -1330,9 +1866,22 @@ async function backfillMemory() {
 }
 function remember(p, src) {
   if (!(S.memoryDays > 0) || !p.memKey) return;
+  memKeys.set(src.id, p.memKey);
+  saveMemory(src);
+}
+// Wpis w pamięci werdyktów: werdykty, opis obrazków i – gdy już jest – ocena całości.
+function saveMemory(src, { reused = false } = {}) {
+  const key = memKeys.get(src.id);
+  if (!(S.memoryDays > 0) || !key) return;
+  const claims = state.claims.filter((c) => c.srcId === src.id);
+  const summary = validSummary(src, claims);
+  const from = reused ? src.fromMemory : null; // wynik z pamięci: zostaje jego data i model
   saveToMemory({
-    key: p.memKey, lang: getLang(), provider: S.provider, model: S.model, kind: src.kind, title: src.title,
-    claims: state.claims.filter((c) => c.srcId === src.id).map(stripClaim), imageNotes: src.imageNotes || [],
+    key, lang: getLang(), provider: from ? from.provider || "" : S.provider, model: from ? from.model || "" : S.model,
+    ...(from ? { at: from.at } : {}), kind: src.kind, title: src.title,
+    claims: claims.map(stripClaim), imageNotes: src.imageNotes || [], ...(summary ? { summary } : {}),
+    ...(src.tricks?.length ? { tricks: src.tricks.map(({ trick, quote, speaker, why }) => ({ trick, quote, speaker, why })) } : {}),
+    ...(src.tricksChecked ? { tricksChecked: true } : {}),
   }).catch((e) => console.warn(e));
 }
 // Wynik złożony z rozpoznanych obrazków (każdy mógł być sprawdzony w innym poście): numery obrazków od nowa.
@@ -1344,6 +1893,8 @@ function imagesHit(found) {
     images: true,
     claims: found.flatMap((m, i) => m.claims.map((c) => ({ ...c, image: i + 1 }))),
     imageNotes: found.map((m, i) => (m.note ? { ...m.note, index: i + 1 } : null)).filter(Boolean),
+    // ocena całości pasuje tylko, gdy dotyczyła dokładnie tych werdyktów (sprawdza to applyMemory)
+    ...(found.length === 1 && found[0].summary ? { summary: found[0].summary } : {}),
   };
 }
 async function applyMemory(p, hit) {
@@ -1354,6 +1905,11 @@ async function applyMemory(p, hit) {
   $("lastSession").hidden = true;
   const now = Date.now();
   const claims = (hit.claims || []).map((c) => ({ ...c, id: newClaimId(), srcId: src.id, t: now, fromMemory: hit.at }));
+  if (hit.summary?.headline && hit.summary.key === summaryKey(claims)) src.summary = hit.summary;
+  if (hit.tricks?.length) src.tricks = hit.tricks.filter((x) => TRICKS[x.trick]).map((x) => ({ ...x, id: newTrickId(), srcId: src.id, t: now }));
+  if (hit.tricksChecked || hit.tricks?.length) src.tricksChecked = true;
+  computeScam(src);
+  if (p.memKey) memKeys.set(src.id, p.memKey);
   for (const c of claims) { state.claims.push(c); addCard(c); }
   const g = groupEl(src.id);
   toTop(g);
@@ -1366,6 +1922,7 @@ async function applyMemory(p, hit) {
   pageToast(p, `Fact Checker: ${t("mem.toast", { n: claims.length })}`);
   setBadge(state.running ? "listening" : "done", claims.length);
   enrichFactChecks(claims);
+  if (!src.summary) maybeSummarize(src);
   saveSessionNow();
   runQueued();
 }
@@ -1512,7 +2069,7 @@ async function generateReply(tone) {
     let structured = PROVIDERS[S.provider]?.structured !== false && !state.disabled.has("structured");
     let res, sources;
     for (let attempt = 0; ; attempt++) {
-      const built = buildReplyRequest({ model: S.model, claims, post, tone, lang: getLang(), structured });
+      const built = buildReplyRequest({ model: S.model, claims, post, tone, lang: getLang(), structured, summary: claims.length > 1 ? validSummary(src, claims) : null });
       sources = built.sources;
       try {
         res = await callModel({ provider: S.provider, key: await getToken(), body: built.body, timeoutMs: 90_000, idleMs: 45_000 });
@@ -1696,8 +2253,13 @@ async function runCheck({ force = false, manualText = null, manual = false } = {
       mode: S.mode,
       maxClaims: modeOf(S.mode).audioClaims,
       maxSearches: modeOf(S.mode).searches,
+      tricks: trickMax(true),
     }), { onEvent: actEvent });
     const claims = claimsFrom(result, srcId);
+    if (trickMax(true) && audioSrc) {
+      audioSrc.tricksChecked = true;
+      addTricks(audioSrc, parseTricks(result.text, { max: trickMax(true), seen: audioSrc.tricks || [] }));
+    }
     added = claims.length;
     for (const c of claims) {
       c.t = Date.now();
@@ -1762,6 +2324,8 @@ async function start() {
   banner(null);
   S.src = document.querySelector("input[name=src]:checked").value;
   await saveSettings();
+  const why = await sttProblem();
+  if (why) { await openSttSetup(why); return; }
   const common = {
     language: S.language,
     onText: addText,
@@ -1778,13 +2342,9 @@ async function start() {
   state.txFrom = Date.now(); // nowe nagranie = czyste okno transkrypcji (stary tekst zostaje w sesji)
   state.showAllTx = false;
   try {
-    if (S.engine === "local") {
+    if (S.engine === "local" || IS_OPERA && S.engine === "chrome") {
       const have = await getDownloaded();
       const m = getModel(S.localModel);
-      if (!m || !have[m.id]) {
-        banner(esc(t("err.needModel")) + openSettingsLink(), "error");
-        return;
-      }
       state.transcriber = new LocalTranscriber({
         ...common, modelId: m.id, device: have[m.id].device || DEVICE, chunkSec: S.chunkSec,
         language: m.multilingual ? S.language : m.lang, // model tylko angielski = rozmowa po angielsku
@@ -2108,6 +2668,9 @@ async function checkPage(p) {
   $("lastSession").hidden = true;
   if (!p.imageError) banner(null); // ostrzeżenie o nieudanym zrzucie obrazków zostaje widoczne
 
+  await loadCert(); // kopia listy od razu (nawet starsza); pobieranie / odświeżanie w tle
+  computeScam(src);
+  { const g = groupEl(src.id, { create: false }); if (g) renderGroupHead(g); }
   const chunks = chunkText(text, CHUNK_CHARS);
   if (!chunks.length) chunks.push(""); // sam obrazek
   state.busy = true;
@@ -2130,7 +2693,7 @@ async function checkPage(p) {
         structured,
         outLang: getLang(),
         kind: src.kind,
-        meta: { ...requestMeta(src), ...(known ? { knownImages: src.imageNotes.map((x) => x.topic || x.text).filter(Boolean) } : {}) },
+        meta: { ...requestMeta(src), ...(known ? { knownImages: src.imageNotes.map((x) => x.topic || x.text).filter(Boolean) } : {}), ...(src.scam ? { scam: scamHint(src.scam) } : {}) },
         text: S.maskPeople ? maskHandles(chunks[i]) : chunks[i],
         part: i + 1,
         parts: chunks.length,
@@ -2139,11 +2702,17 @@ async function checkPage(p) {
         mode: S.mode,
         maxClaims: modeOf(S.mode).textClaims,
         maxSearches: modeOf(S.mode).searches,
+        tricks: trickMax(false),
       }), { onEvent: actEvent });
+      if (trickMax(false)) {
+        src.tricksChecked = true; // „brak chwytów” to też wynik – panel to pokazuje
+        addTricks(src, parseTricks(result.text, { max: trickMax(false), seen: src.tricks || [] }));
+      }
       if (imgs.length) {
         src.imageNotes = parseImageNotes(result.text);
         // obrazek bez tekstu: tytuł źródła = o czym jest obrazek (zamiast „Obrazek – Facebook”)
         if (!src.text && (src.imageNotes[0]?.topic || src.imageNotes[0]?.text)) src.title = imageTitle(src.imageNotes[0]);
+        computeScam(src); // tekst odczytany z obrazka (np. reklama „inwestycji” na grafice)
         const g = groupEl(src.id, { create: false });
         if (g) renderGroupHead(g);
         touchSession();
@@ -2161,6 +2730,7 @@ async function checkPage(p) {
       touchSession();
     }
     remember(p, src);
+    maybeSummarize(src);
     if (!n) {
       setStatus(t("status.none"));
       done = t("page.toastNone");
@@ -2214,6 +2784,19 @@ function itemsForTab(tab, frameId = 0) {
       area: src.kind === "area",
     } });
   }
+  // chwyty erystyczne: osobny kolor, w dymku nazwa, „dlaczego” i definicja
+  const lang = getLang();
+  for (const src of session.sources) {
+    if (!isPageKind(src.kind) || (src.frameId || 0) !== frameId) continue;
+    if (src.tabId !== tab.id && !sameUrl(src.pageUrl || src.url, tab.url)) continue;
+    for (const x of src.tricks || []) {
+      if (!x.quote || !TRICKS[x.trick]) continue;
+      list.push({ c: x, item: {
+        quote: x.quote, tone: "trick", label: `${t("trick.label")}: ${trickName(x.trick, lang)}`, claim: x.why, expl: TRICKS[x.trick].def[lang] || TRICKS[x.trick].def.en,
+        claimLabel: t("trick.whyLabel"), captureId: src.tabId === tab.id ? src.captureId : null, image: 0, area: false,
+      } });
+    }
+  }
   return list;
 }
 async function highlightTab(tab, frameId = 0) {
@@ -2231,7 +2814,7 @@ async function highlightSource(src) {
     const { list, found } = await highlightTab(tab, src.frameId || 0);
     renderFeed();
     touchSession();
-    return list.filter((x, i) => x.c.srcId === src.id && found[i]).length;
+    return list.filter((x, i) => x.c.srcId === src.id && found[i] && !x.c.trick).length;
   } catch (e) {
     console.warn(e);
     return null;
@@ -2295,6 +2878,33 @@ function alertInDialog(msg) {
 
 // ---------- zdarzenia ----------
 $("toggle").addEventListener("click", () => (state.running ? stop() : start()));
+$("certRefresh").addEventListener("click", async () => {
+  $("certInfo").textContent = t("set.certLoading");
+  const prev = S.certList;
+  S.certList = true; // odśwież także wtedy, gdy pole jest właśnie zaznaczane
+  await loadCert({ wait: true, force: true });
+  S.certList = prev;
+  renderCertInfo();
+});
+$("ssDownload").addEventListener("click", () => ssDownload().catch((e) => console.error(e)));
+$("ssUseOpenai").addEventListener("click", async () => {
+  if (!S.apiKey) { $("sttSetup").close(); await openSettings(); $("listenGroup").scrollIntoView({ block: "start" }); return; }
+  S.engine = "openai";
+  await saveSettings();
+  $("sttSetup").close();
+  start();
+});
+$("ssUseChrome").addEventListener("click", async () => {
+  S.engine = "chrome";
+  await saveSettings();
+  $("sttSetup").close();
+  start();
+});
+$("ssMore").addEventListener("click", async () => {
+  $("sttSetup").close();
+  await openSettings();
+  $("listenGroup").scrollIntoView({ block: "start" });
+});
 $("openSettings").addEventListener("click", openSettings);
 $("checkNow").addEventListener("click", () => {
   if (state.busy) {
@@ -2350,6 +2960,8 @@ $("onlyProblems").addEventListener("click", async () => {
 });
 $("spkInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setSpeaker($("spkInput").value); } });
 $("spkInput").addEventListener("change", () => { if ($("spkInput").value.trim()) setSpeaker($("spkInput").value); });
+// zamiana mowy: lista modeli tylko dla modelu lokalnego, model transkrypcji tylko dla OpenAI
+document.querySelectorAll("input[name=engine]").forEach((r) => r.addEventListener("change", renderEngineBox));
 // tryb pracy: od razu podpowiada odstęp między sprawdzeniami (można go zmienić niżej)
 document.querySelectorAll("input[name=mode]").forEach((r) => r.addEventListener("change", () => { $("intervalSec").value = modeOf(r.value).interval; }));
 for (const id of ["priceIn", "priceOut"]) $(id).addEventListener("input", () => renderCostSettings());

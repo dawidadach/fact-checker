@@ -1,6 +1,6 @@
 # Polityka prywatności – Fact Checker
 
-*Wersja z 11 listopada 2026 r. (wtyczka 0.5.4). English version below.*
+*Wersja z 12 listopada 2026 r. (wtyczka 0.7.0). English version below.*
 
 Fact Checker to wtyczka do przeglądarki (Chrome, Edge, Opera), która sprawdza fakty w tym, co oglądasz i czytasz. Nie ma własnego serwera: nie zbiera statystyk, nie wysyła niczego autorom i nie ma kont użytkowników. Dane trafiają tylko do usług, które sam wybierzesz w ustawieniach, i tylko wtedy, gdy wtyczka wykonuje to, o co prosisz.
 
@@ -13,6 +13,9 @@ Fact Checker to wtyczka do przeglądarki (Chrome, Edge, Opera), która sprawdza 
 | Zrzuty widocznych obrazków albo zaznaczonego wycinka ekranu | wybrany dostawca modelu | tylko po wskazaniu obrazka, posta z obrazkiem albo wycinka, po podglądzie z miniaturami |
 | Dźwięk (kawałki nagrania) | OpenAI – tylko gdy w ⚙ wybierzesz transkrypcję „OpenAI”. Domyślny model lokalny działa na Twoim komputerze i nic nie wysyła. Rozpoznawanie wbudowane w przeglądarkę (Chrome, Edge) działa według jej zasad. | w trakcie nagrywania |
 | Werdykt i treść wskazanego posta (do napisania komentarza) | wybrany dostawca modelu | tylko po kliknięciu „Kopiuj jako odpowiedź” albo „Odpowiedz na cały post” |
+| Twierdzenie, poprzedni werdykt, fragment tekstu wokół cytatu i Twój komentarz z 👎 | wybrany dostawca modelu albo inny, którego wskażesz na liście | tylko po kliknięciu „Sprawdź dokładniej” |
+| Nic o Tobie – wtyczka tylko pobiera całą publiczną Listę Ostrzeżeń (plik z domenami) i sprawdza adresy u siebie | CERT Polska (hole.cert.pl) | najwyżej raz na 12 h, przy sprawdzaniu tekstu ze strony; można wyłączyć w ⚙ |
+| Werdykty i początek sprawdzonego tekstu (do oceny całości) | wybrany dostawca modelu | po sprawdzeniu artykułu lub posta z co najmniej 2 twierdzeniami – można wyłączyć w ⚙ (wtedy tylko po kliknięciu „Podsumuj całość”) |
 | Krótkie hasło z każdego twierdzenia (kilka słów kluczowych) | Google Fact Check Tools (factchecktools.googleapis.com) | tylko jeśli wpiszesz klucz Google Fact Check w ⚙ |
 | Adres obrazka | Google Lens, TinEye albo Yandex | tylko po kliknięciu przycisku wyszukiwania obrazem |
 | Pliki modeli rozpoznawania mowy (pobieranie) | huggingface.co | tylko po kliknięciu „Pobierz” przy modelu lokalnym |
@@ -81,7 +84,7 @@ Pytania i zgłoszenia: zakładka Issues w repozytorium projektu na GitHubie.
 
 # Privacy policy – Fact Checker
 
-*Version of 11 November 2026 (extension 0.5.4).*
+*Version of 12 November 2026 (extension 0.7.0).*
 
 Fact Checker is a browser extension (Chrome, Edge, Opera) that fact-checks what you watch and read. It has no server of its own: no analytics, nothing is sent to its authors, and there are no user accounts. Data goes only to the services you choose in the settings, and only while the extension does what you asked for.
 
@@ -94,6 +97,9 @@ Fact Checker is a browser extension (Chrome, Edge, Opera) that fact-checks what 
 | Screenshots of visible images or of a selected screen area | the chosen model provider | only after you point at an image, a post with images or an area, after a preview with thumbnails |
 | Audio chunks | OpenAI – only if you choose “OpenAI” transcription in ⚙. The default local model runs on your computer and sends nothing. Recognition built into the browser (Chrome, Edge) follows its rules. | while recording |
 | The verdict and the text of the post you pointed at (to write a comment) | the chosen model provider | only when you click “Copy as reply” or “Reply to the whole post” |
+| The claim, the earlier verdict, the text around the quote and your 👎 comment | the chosen model provider, or another one you pick from the list | only when you click “Check more thoroughly” |
+| Nothing about you – the extension only downloads the whole public warning list (a file of domains) and checks addresses locally | CERT Polska (hole.cert.pl) | at most every 12 hours, when checking text from a page; can be turned off in ⚙ |
+| The verdicts and the beginning of the checked text (for the overall rating) | the chosen model provider | after checking an article or post with 2 or more claims – can be turned off in ⚙ (then only when you click “Sum up the whole”) |
 | A short query for each claim (a few keywords) | Google Fact Check Tools (factchecktools.googleapis.com) | only if you enter a Google Fact Check key in ⚙ |
 | An image URL | Google Lens, TinEye or Yandex | only when you click a reverse image search button |
 | Speech model files (download) | huggingface.co | only when you click “Download” for a local model |

@@ -55,8 +55,20 @@ więc źródło nazywa się po prostu „Mikrofon”.
 
 Przyciski w panelu (Start, 📄 Artykuł, 👆 Wskaż post, ✂ Zaznaczenie) zawsze działają na karcie, którą masz teraz przed sobą.
 
-Dalej jak w oryginale: lokalny model mowy (⚙ → Modele lokalne), a do sprawdzania faktów logowanie **Continue with ChatGPT**,
-klucz API albo inny dostawca (Gemini, Claude, OpenRouter – niżej).
+Do sprawdzania faktów potrzebny jest dostawca modelu: logowanie **Continue with ChatGPT**, klucz API albo inny dostawca
+(Gemini, Claude, OpenRouter – niżej). To wystarczy do artykułów, postów, zaznaczeń i obrazków.
+
+**Model mowy dopiero przy słuchaniu.** Gdy pierwszy raz klikniesz **Start**, a zamiana mowy na tekst nie jest gotowa,
+pojawi się okienko **„Zamiana mowy na tekst”**:
+
+- **Model lokalny (zalecany)** – darmowy, nic nie wychodzi z komputera. Wtyczka proponuje model pasujący do języka rozmowy
+  i komputera (z kartą graficzną najlepszy, bez niej średni) i link do lżejszego. **Pobierz** pokazuje pasek postępu;
+  okienko można zamknąć, a pobieranie trwa dalej. Po pobraniu kliknij **▶ Zacznij słuchać**.
+- **OpenAI** – tylko dźwięk karty, potrzebny klucz API OpenAI.
+- **Wbudowane w przeglądarkę** – tylko mikrofon, w Chrome i Edge.
+
+Jeśli jakiś model jest już pobrany, wtyczka użyje go sama, bez pytania. Okienko pojawia się też wtedy, gdy wybrany sposób
+nie pasuje do źródła (np. OpenAI z mikrofonem albo wbudowane rozpoznawanie z dźwiękiem karty).
 
 ## Sprawdzanie tekstu ze strony (artykuły, Facebook, X)
 
@@ -176,6 +188,103 @@ w panelu („Czeka na sprawdzenie (3)”) – pozycję usuniesz ✕, całość �
 komunikat „dodano do kolejki (pozycja N)”, a ten sam tekst nie wejdzie do kolejki dwa razy.
 Długie teksty (podgląd „Co wyślę”) zatwierdzasz od razu przy dodawaniu – potem sprawdzają się już same.
 
+## Ocena całości (artykuł, post, mem, infografika)
+
+Gdy artykuł albo post ma co najmniej 2 sprawdzone twierdzenia (albo twierdzenie i uwagi do obrazka, np. „nagranie
+z 2022 r.”), nad kartami pojawia się **„Ocena całości”**. Pozwala wiedzieć, co jest rzetelne, a co nie, zanim
+przeczytasz szczegóły:
+
+- **poziom** na pasku z 5 pól:
+
+  | Poziom | Kiedy |
+  |---|---|
+  | Rzetelny | główna teza się zgadza, nie ma istotnych błędów |
+  | Rzetelny, z drobnymi błędami | teza się zgadza, błędy są w szczegółach |
+  | Mieszany | ważna część się nie zgadza albo brakuje kluczowego kontekstu |
+  | Wprowadza w błąd | fakty mogą być prawdziwe, ale wniosek albo kontekst jest fałszywy (typowe dla memów) |
+  | Nierzetelny | główna teza jest fałszywa |
+
+  Do tego **„Nie do oceny”** – opinie, satyra albo nic, co da się sprawdzić.
+- **jedno-dwa zdania**: co tekst mówi i czy to się broni;
+- **rodzaj treści**: wiadomość, opinia, *opinia podana jako wiadomość*, wpis prywatny, materiał wyborczy, *reklama*,
+  satyra albo *możliwe oszustwo* (pochyłe – to ostrzeżenia, np. fałszywa „inwestycja” ze znaną twarzą);
+- **punkty**: ✓ co się zgadza, ✗ co jest fałszywe lub mylące, ⚠ czego brakuje (kontekst, stare zdjęcie…),
+  ⚖ czyjego głosu albo jakiej strony brakuje (np. drugiej strony sporu, danych urzędowych).
+
+Poziom zależy od **wagi** twierdzeń, nie od ich liczby: fałsz w głównej tezie waży więcej niż fałsz w szczególe.
+Model najpierw wskazuje, które twierdzenia są główną tezą, a wtyczka pilnuje, żeby poziom nie był łagodniejszy niż
+ich werdykty (np. fałszywa teza nigdy nie dostanie „Rzetelny, z drobnymi błędami”).
+
+Ocena powstaje **po** werdyktach, osobnym, małym zapytaniem bez wyszukiwania – model pisze ją tylko z werdyktów i
+uwag do obrazków, bez nowych faktów. Dotyczy sprawdzonych twierdzeń, nie całego tekstu (opinie i rzeczy
+niesprawdzalne do niej nie wchodzą). ↻ pisze ją jeszcze raz. Trafia do pamięci werdyktów (ten sam artykuł czy mem
+pokaże ją od razu), do historii (plakietka przy sesji), do raportu i eksportu Markdown, a „Odpowiedz na cały post”
+zaczyna od głównej tezy, tak jak ocena.
+
+**Karty zwinięte do jednej linii.** Gdy ocena jest gotowa, karty źródła pokazują tylko werdykt i twierdzenie,
+najpierw problemy (fałsz, wprowadza w błąd, półprawda), potem reszta. Kliknij kartę, żeby zobaczyć szczegóły;
+**„Rozwiń karty”** pod oceną rozwija wszystkie naraz.
+
+Dla dźwięku (karta, mikrofon) oceny całości nie ma – tam jest raport sesji. Jedno twierdzenie bez obrazka też jej
+nie dostaje, bo karta już jest podsumowaniem. Automat można wyłączyć w ⚙ (Tryb pracy → „Podsumowuj artykuły i
+posty”); wtedy w tym miejscu jest przycisk **„Podsumuj całość”**.
+
+## Ostrzeżenie przed oszustwem
+
+Fałszywe reklamy „inwestycji” ze znanymi twarzami, podrobione artykuły „Onetu” czy „TVN24”, „dopłata do paczki”,
+„zablokowane konto” – przy sprawdzaniu posta, artykułu, zaznaczenia albo obrazka wtyczka szuka sygnałów oszustwa.
+Robi to **w przeglądarce, bez modelu (0 tokenów)**:
+
+- **Lista Ostrzeżeń CERT Polska** – publiczna lista niebezpiecznych domen. Wtyczka pobiera **cały plik** (najwyżej
+  raz na 12 h, przy pierwszym sprawdzaniu) i sprawdza adresy u siebie, więc CERT nie dowiaduje się, jakie strony
+  oglądasz. Wpis obejmuje też subdomeny.
+- **Adres udający markę** – banki (PKO BP, mBank, ING…), płatności (BLIK, PayU, PayPal), kurierzy (InPost, DPD,
+  Poczta Polska), sklepy (Allegro, OLX, Vinted), gov.pl i mObywatel, media (Onet, TVN24, Polsat News…):
+  nazwa marki w obcym adresie (`tvn24-news.online`), marka w subdomenie (`allegro.pl.oferta-24.com`), podmienione
+  znaki (`a11egro.pl`, `rnbank.pl`), literówki w adresach banków i sklepów, strona, która przedstawia się jako „Onet”,
+  a ma inny adres, znaki z innych alfabetów (`xn--…`), sam adres IP.
+- **Linki w poście** – także te ukryte za przekierowaniem Facebooka (`l.facebook.com/l.php?u=…`), i adresy wpisane w
+  tekst („wejdź na …”).
+- **Sformułowania** typowe dla oszustw: obietnica zysku („zarabia 5000 zł dziennie”), platforma inwestycyjna i
+  kryptowaluty, „sekret, który banki ukrywają”, presja czasu („zostało tylko 7 miejsc”), prośba o dane albo płatność
+  („dopłata do przesyłki”, „kod BLIK”), kontakt poza serwisem („konsultant zadzwoni”, WhatsApp), „wygrałeś nagrodę”.
+
+Ramka nad oceną całości:
+
+- **⚠ Możliwe oszustwo** (czerwona) – gdy adres jest na Liście CERT albo udaje markę;
+- **⚠ Sygnały typowe dla oszustw** (pomarańczowa) – gdy co najmniej dwa rodzaje podejrzanych sformułowań (albo jedno
+  i podejrzany adres).
+
+W ramce są powody (z cytatem albo adresem), rada (nie wpłacaj pieniędzy, nie podawaj danych ani kodów BLIK, adres
+banku wpisuj sam) i gdzie zgłosić: **incydent.cert.pl**, SMS na **8080**, na Facebooku „Zgłoś reklamę”.
+
+Żeby nie straszyć bez powodu: pojedyncze słowo („bitcoin”, kwota w złotych) nie wystarcza, sama końcówka adresu
+(`.online`) też nie, a na znanych serwisach (media, urzędy) treść i adresy wpisane w tekst nie wywołują ostrzeżenia –
+artykuł **o** oszustwach to nie oszustwo.
+
+**Model dostaje informację tylko wtedy, gdy coś się znalazło**: kilkadziesiąt tokenów z listą sygnałów i prośbą, by
+sprawdził, czy znane osoby czy marki naprawdę to mówiły. Wtedy powstaje też **ocena całości** (nawet przy jednym
+twierdzeniu), w której model potwierdza rodzaj treści **„Możliwe oszustwo”** – albo uznaje alarm za fałszywy.
+
+Ustawienia: ⚙ → **Ochrona przed oszustwami** (obie opcje domyślnie włączone; tam też stan Listy CERT i „Odśwież
+listę”). Ostrzeżenie trafia do historii (plakietka ⚠), raportu i eksportu Markdown.
+
+## Chwyty erystyczne
+
+Oprócz faktów wtyczka wyłapuje **chwyty**, czyli nieuczciwe sposoby argumentowania: fałszywy dylemat, atak na osobę,
+chochoł, „a u was…”, dowód anegdotyczny, wybiórcze fakty, równia pochyła, fałszywy autorytet, odwołanie do większości,
+straszenie, „my kontra oni”, pytanie z tezą, fałszywa przyczyna, presja czasu i galop Gisha.
+
+- Pod kartami źródła jest lista **🎭 Chwyty erystyczne** – nazwa, cytat, jedno zdanie „dlaczego” i rozwijane
+  **„Na czym polega · jak odpowiedzieć”**. Na stronie chwyty są podkreślone na fioletowo (przerywaną linią).
+- Chwyt to **nie werdykt**: mówi o sposobie argumentowania, nie o tym, czy teza jest prawdziwa.
+- Model zgłasza tylko wyraźne przypadki: najwyżej 3 na tekst, 2 na fragment rozmowy. Same emocjonalne słowa albo
+  mocna opinia nie są chwytem.
+- W raporcie z debaty tabela mówców ma kolumnę **Chwyty** – ile ich użył każdy mówca.
+- Definicje i „jak odpowiedzieć” są zapisane we wtyczce, więc model zwraca tylko nazwę, cytat i jedno zdanie.
+  Kosztuje to ok. 430 tokenów na zapytanie i ok. 50 na znaleziony chwyt – przy wyszukiwaniu w sieci to zwykle 2–5%
+  więcej. Wyłączysz to w ⚙ → Tryb sprawdzania → „Wykrywaj chwyty erystyczne”.
+
 ## Karta z werdyktem
 
 Pod werdyktem i cytatem jest **„Sprawdzane twierdzenie”** (wyróżnione tłem) – to teza, którą sprawdzamy, a nie
@@ -184,12 +293,23 @@ stwierdzenie wtyczki – a pod nią **„Ocena”**, czyli wyjaśnienie werdyktu
 Na dole karty:
 
 - **👍 / 👎** – oceń werdykt. Po 👎 napisz krótko, co jest nie tak (zły werdykt, nieaktualne dane, nikt tego nie
-  powiedział…). Drugie kliknięcie cofa ocenę. Wszystkie oceny wyeksportujesz w 🕘 Historii przyciskiem
+  powiedział…). Drugie kliknięcie cofa ocenę.
+- **🔍 Sprawdź dokładniej** (pojawia się po 👎) – to jedno twierdzenie idzie do sprawdzenia od zera w trybie
+  dokładnym (więcej wyszukiwań, źródła pierwotne). Model dostaje fragment tekstu wokół cytatu, poprzedni werdykt i Twój
+  komentarz – jako wskazówkę, co sprawdzić, a nie jako fakt (werdykt zmieni tylko, jeśli dowody to potwierdzą). Jeśli
+  masz w ⚙ klucz i wybrany model u innego dostawcy (np. Gemini), możesz wybrać go z listy – to „druga opinia”. Karta
+  pokaże nowy werdykt i dopisek „Sprawdzone dokładniej (…) – wcześniej: Półprawda” (albo „werdykt bez zmian”);
+  pamięć werdyktów i ocena całości aktualizują się same. Kosztuje mniej więcej tyle co jedno zwykłe sprawdzenie. Wszystkie oceny wyeksportujesz w 🕘 Historii przyciskiem
   **„Eksportuj oceny (JSON)”** – plik zawiera werdykt, model, sprawdzany tekst i Twój komentarz, więc nadaje się
   do poprawiania promptów.
 - **📋 Kopiuj jako odpowiedź** – okienko z komentarzem do wklejenia pod postem, napisanym ludzkim językiem i
   dopasowanym do posta (panel mówi formalnie, komentarz – jak człowiek w dyskusji). Szczegóły niżej.
 - **📚 Sprawdzali to też fact-checkerzy** – patrz niżej.
+
+**Poziom źródła.** Przy każdym linku jest plakietka: *dane* (GUS, NBP, Eurostat…), *dokument* (ustawy, Sejm,
+wyroki), *nauka*, *urząd*, *sondaż*, *fact-check*, *encyklopedia*, *media*, *social media*. Wtyczka rozpoznaje je po
+adresie, bez modelu, więc nie kosztują nic. Od razu widać, czy werdykt stoi na danych i dokumentach, czy na artykule
+prasowym albo wpisie. Strona spoza list (np. firmy) nie ma plakietki.
 
 Nad listą werdyktów są liczniki (Prawda: 3 · Fałsz: 2…) i przycisk **„Tylko problematyczne”**, który zostawia na
 ekranie tylko półprawdy, manipulacje i fałsze. Każde źródło ma też własne liczniki.
@@ -305,7 +425,8 @@ Najważniejsze pliki: `lib/providers.js` (Gemini / Claude / OpenRouter), `lib/ll
 (prompt i schemat odpowiedzi), `lib/history.js` (sesje, eksport ocen), `lib/capture.js` + `content/page.js` (tekst i
 obrazki ze stron, zamazywanie, data filmu), `lib/shot.js` (zrzuty obrazków), `lib/pricing.js` (cenniki i tryby),
 `lib/factcheckapi.js` (Google Fact Check), `lib/memory.js` (pamięć werdyktów), `lib/report.js` (raport),
-`lib/reply.js` (odpowiedź do wklejenia),
+`lib/reply.js` (odpowiedź do wklejenia), `lib/summary.js` (ocena całości), `lib/tricks.js` (chwyty erystyczne), `lib/sourcetier.js` (poziom źródła), `lib/scam.js` (sygnały oszustwa),
+`lib/certlist.js` (Lista Ostrzeżeń CERT Polska),
 `lib/vendor/Readability.js` (Mozilla, Apache 2.0).
 
 Ceny w `lib/pricing.js` są orientacyjne (listopad 2026) – przy zmianie cenników wystarczy poprawić tabelę.

@@ -325,3 +325,114 @@ form.reply-form h2 { margin: 0; font-size: 16px; }
 .seg.tones label, .seg.tones label + label { border: 1px solid var(--line); border-radius: 999px; background: var(--card); padding: 4px 11px; }
 .seg.tones label:has(input:checked) { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
 form.reply-form { min-width: 0; }
+
+/* ocena całości źródła (artykuł, post, mem) */
+.src-sum { flex-basis: 100%; margin: 6px 0 2px; padding: 8px 10px; border: 1px solid var(--line); border-top: 3px solid var(--tone, var(--line)); border-radius: 10px; background: var(--card); font-size: 13px; }
+.src-sum[data-tone="good"] { --tone: var(--good); }
+.src-sum[data-tone="warn"] { --tone: var(--warn); }
+.src-sum[data-tone="bad"] { --tone: var(--bad); }
+.src-sum[data-tone="muted"] { --tone: var(--neutral); }
+.src-sum.pending, .src-sum.missing, .src-sum.error { border-top-width: 1px; padding: 6px 10px; }
+.src-sum.pending .sum-wait { color: var(--muted); }
+.src-sum.pending .sum-wait::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s infinite; }
+.sum-err { margin: 0 0 6px; color: var(--warn); }
+.sum-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.sum-cap { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); flex: 1 1 auto; }
+.sum-break { flex-basis: 100%; height: 0; }
+.sum-level { font-weight: 700; padding: 1px 9px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 14%, var(--card)); color: var(--tone); }
+.sum-scale { display: inline-flex; gap: 3px; }
+.sum-scale i { width: 16px; height: 6px; border-radius: 3px; background: var(--line); }
+.sum-scale i.on { background: var(--tone); }
+.sum-again { padding: 0 6px; line-height: 1.3; }
+.sum-head { margin: 6px 0 4px; font-weight: 600; line-height: 1.45; }
+.sum-pts { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.sum-pts li { display: grid; grid-template-columns: 14px 1fr; gap: 4px; line-height: 1.4; }
+.sum-pts li.ok b { color: var(--good); }
+.sum-pts li.wrong b { color: var(--bad); }
+.sum-pts li.ctx b { color: var(--warn); }
+.sum-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-top: 7px; padding-top: 6px; border-top: 1px dashed var(--line); font-size: 11.5px; }
+.sum-foot button { padding: 1px 8px; font-size: 12px; }
+.hist-pills .pill.level { font-weight: 700; }
+
+/* karty zwinięte do jednej linii w źródle z oceną całości */
+.card .fold { display: none; padding: 0 6px; font-size: 12px; line-height: 1.4; }
+.card .fold::before { content: "▸"; }
+.card.open .fold::before { content: "▾"; }
+.src-group.summarised:not(.open-all) .card:not(.skeleton) .fold { display: inline-block; }
+.src-group.summarised:not(.open-all) .card:not(.open):not(.skeleton) { padding: 6px 10px; cursor: pointer; }
+.src-group.summarised:not(.open-all) .card:not(.open):not(.skeleton) > :not(.card-head):not(.claim) { display: none; }
+.src-group.summarised:not(.open-all) .card:not(.open):not(.skeleton) .card-head :is(.conf, time, .goto) { display: none; }
+.src-group.summarised:not(.open-all) .card:not(.open):not(.skeleton) .card-head .fold { margin-left: auto; }
+.src-group.summarised:not(.open-all) .card:not(.open):not(.skeleton) .claim { margin: 4px 0 0; padding: 0; background: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.src-group.summarised:not(.open-all) .card:not(.open):not(.skeleton):hover { border-color: var(--accent); }
+
+/* ustawienia: grupa „Słuchanie na żywo” */
+.set-group { margin: 14px 0 10px; padding: 10px 10px 2px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+.set-group > h3 { margin: 0 0 2px; font-size: 14px; }
+.set-group > .hint { margin: 0 0 10px; }
+.set-group fieldset { background: var(--card); }
+
+/* okienko „Zamiana mowy na tekst” (Start bez gotowej transkrypcji) */
+.stt-setup form { display: grid; gap: 10px; }
+.stt-setup h2 { margin: 0; }
+.ss-why { margin: 0; font-size: 13px; }
+.ss-opt { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.ss-opt.rec { border-color: var(--accent); }
+.ss-head { display: flex; align-items: center; gap: 6px; font-size: 13.5px; }
+.ss-badge { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px; background: var(--good-bg); color: var(--good); }
+.ss-opt progress { width: 100%; height: 8px; }
+.ss-status.warn { color: var(--warn); }
+.ss-opt .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; }
+button.link { border: none; background: none; padding: 2px 0; color: var(--accent); text-decoration: underline; font-size: 12.5px; cursor: pointer; }
+
+/* chwyty erystyczne (pod kartami źródła) */
+.tricks { margin-top: 8px; }
+.tricks > details { border: 1px solid color-mix(in srgb, var(--trick) 35%, var(--line)); border-left: 3px solid var(--trick); border-radius: 0 10px 10px 0; background: var(--card); padding: 6px 10px; }
+.tricks summary { cursor: pointer; font-size: 13px; color: var(--trick); }
+.trick-note { margin: 4px 0 6px; }
+.trick { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 13px; }
+.trick-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.trick-name { font-weight: 700; color: var(--trick); }
+.trick-head .goto { margin-left: auto; }
+.trick .quote { margin: 4px 0; }
+.trick-why { margin: 2px 0 4px; }
+.trick-more summary { font-size: 12px; color: var(--muted); }
+.trick-more p { margin: 4px 0; font-size: 12.5px; }
+.hist-pills .pill.trick { background: color-mix(in srgb, var(--trick) 14%, var(--card)); color: var(--trick); }
+:root { --trick: #6b4fd8; }
+@media (prefers-color-scheme: dark) { :root { --trick: #ab97ff; } }
+
+/* gatunek tekstu w ocenie całości */
+.sum-genre { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.sum-genre[data-tone="warn"] { border-color: var(--warn); color: var(--warn); }
+.sum-genre[data-tone="bad"] { border-color: var(--bad); color: var(--bad); font-weight: 700; }
+.sum-pts li.side b { color: var(--muted); }
+
+/* poziom źródła przy linku */
+.sources .tier { display: inline-block; font-size: 10.5px; line-height: 1.5; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; white-space: nowrap; }
+.sources .tier[data-tone="good"] { border-color: color-mix(in srgb, var(--good) 50%, var(--line)); color: var(--good); }
+.sources .tier[data-tone="info"] { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--accent); }
+.sources .tier[data-tone="warn"] { border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); color: var(--warn); }
+
+/* „Sprawdź dokładniej” */
+.recheck-note { margin: 4px 0 2px; font-size: 12px; color: var(--muted); }
+.recheck-note.busy::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s infinite; }
+.recheck-note.warn { color: var(--warn); }
+.fb-more { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; flex-basis: 100%; margin-top: 6px; }
+.fb-more select { font-size: 12px; padding: 2px 4px; max-width: 200px; }
+.recheck-by { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+
+/* ostrzeżenie przed oszustwem */
+.src-head .scam-box { flex-basis: 100%; }
+.scam-box { margin: 6px 0 2px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--card)); font-size: 13px; }
+.scam-box.high { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, var(--card)); }
+.scam-title { color: var(--warn); }
+.scam-box.high .scam-title { color: var(--bad); }
+.scam-box ul { margin: 4px 0; padding-left: 18px; }
+.scam-box li { margin: 2px 0; }
+.scam-advice { margin: 6px 0 2px; font-weight: 600; }
+.scam-report { margin: 2px 0; font-size: 12.5px; }
+.scam-box .hint { margin: 4px 0 0; }
+.hist-pills .pill.scam { background: color-mix(in srgb, var(--warn) 16%, var(--card)); color: var(--warn); }
+.hist-pills .pill.scam.high { background: color-mix(in srgb, var(--bad) 14%, var(--card)); color: var(--bad); }
+.tricks-none { margin: 6px 2px 0; }

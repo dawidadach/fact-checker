@@ -97,6 +97,25 @@
     <h2 id="settingsTitle" data-i18n="app.settings"></h2>
 
     <fieldset>
+      <legend data-i18n="set.languages"></legend>
+      <label><span data-i18n="set.uiLang"></span>
+        <select id="uiLang">
+          <option value="auto" data-i18n="set.uiAuto"></option>
+          <option value="en">English</option>
+          <option value="pl">Polski</option>
+        </select>
+      </label>
+      <p class="hint" data-i18n="set.uiLangHint"></p>
+      <label><span data-i18n="set.convLang"></span>
+        <select id="language">
+          <option value="pl" data-i18n="lang.pl"></option>
+          <option value="en" data-i18n="lang.en"></option>
+        </select>
+      </label>
+      <p class="hint" data-i18n="set.convLangHint"></p>
+    </fieldset>
+
+    <fieldset>
       <legend data-i18n="set.provider"></legend>
       <label class="opt"><input type="radio" name="provider" value="chatgpt"> <span data-i18n="set.providerChatgpt"></span></label>
       <div class="sub" id="chatgptBox">
@@ -134,6 +153,10 @@
       <label class="opt"><input type="radio" name="mode" value="normal"> <span data-i18n="set.modeNormal"></span></label>
       <label class="opt"><input type="radio" name="mode" value="thorough"> <span data-i18n="set.modeThorough"></span></label>
       <p class="hint" data-i18n="set.modeHint"></p>
+      <label class="check"><input type="checkbox" id="autoSummary"> <span data-i18n="set.autoSummary"></span></label>
+      <p class="hint" data-i18n="set.autoSummaryHint"></p>
+      <label class="check"><input type="checkbox" id="tricks"> <span data-i18n="set.tricks"></span></label>
+      <p class="hint" data-i18n="set.tricksHint"></p>
     </fieldset>
 
     <fieldset>
@@ -158,39 +181,35 @@
       <p class="hint" data-i18n-html="set.fcHint"></p>
     </fieldset>
 
-    <fieldset>
-      <legend data-i18n="set.engine"></legend>
-      <label class="opt"><input type="radio" name="engine" value="local"> <span data-i18n="set.engineLocal"></span></label>
-      <label class="opt"><input type="radio" name="engine" value="openai"> <span data-i18n="set.engineOpenai"></span></label>
-      <label class="opt"><input type="radio" name="engine" value="chrome"> <span data-i18n="set.engineChrome"></span></label>
-    </fieldset>
+    <section class="set-group" id="listenGroup" aria-labelledby="listenTitle">
+      <h3 id="listenTitle" data-i18n="set.listen"></h3>
+      <p class="hint" data-i18n="set.listenHint"></p>
 
-    <fieldset id="modelsBox">
-      <legend data-i18n="set.localModels"></legend>
-      <p class="hint" id="deviceInfo" data-i18n="set.checkingGpu"></p>
-      <div id="modelList" class="models"></div>
-      <p class="hint" id="storageInfo"></p>
-    </fieldset>
+      <fieldset>
+        <legend data-i18n="set.engine"></legend>
+        <label class="opt"><input type="radio" name="engine" value="local"> <span data-i18n="set.engineLocal"></span></label>
+        <label class="opt"><input type="radio" name="engine" value="openai"> <span data-i18n="set.engineOpenai"></span></label>
+        <label class="opt"><input type="radio" name="engine" value="chrome"> <span data-i18n="set.engineChrome"></span></label>
+        <label id="sttModelRow"><span data-i18n="set.sttModel"></span> <input id="sttModel" placeholder="gpt-4o-mini-transcribe"></label>
+        <p class="hint" id="engineHint"></p>
+      </fieldset>
 
-    <fieldset>
-      <legend data-i18n="set.rhythm"></legend>
-      <label><span data-i18n="set.uiLang"></span>
-        <select id="uiLang">
-          <option value="auto" data-i18n="set.uiAuto"></option>
-          <option value="en">English</option>
-          <option value="pl">Polski</option>
-        </select>
-      </label>
-      <label><span data-i18n="set.convLang"></span>
-        <select id="language">
-          <option value="pl" data-i18n="lang.pl"></option>
-          <option value="en" data-i18n="lang.en"></option>
-        </select>
-      </label>
-      <label><span data-i18n="set.interval"></span> <input type="number" id="intervalSec" min="10" max="300" step="5"></label>
-      <label><span data-i18n="set.chunk"></span> <input type="number" id="chunkSec" min="5" max="25" step="1"></label>
-      <label><span data-i18n="set.sttModel"></span> <input id="sttModel" placeholder="gpt-4o-mini-transcribe"></label>
-    </fieldset>
+      <fieldset id="modelsBox">
+        <legend data-i18n="set.localModels"></legend>
+        <p class="hint" data-i18n="set.localModelsHint"></p>
+        <p class="hint" id="deviceInfo" data-i18n="set.checkingGpu"></p>
+        <div id="modelList" class="models"></div>
+        <p class="hint" id="storageInfo"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend data-i18n="set.rhythm"></legend>
+        <label><span data-i18n="set.interval"></span> <input type="number" id="intervalSec" min="10" max="300" step="5"></label>
+        <p class="hint" data-i18n="set.intervalHint"></p>
+        <label><span data-i18n="set.chunk"></span> <input type="number" id="chunkSec" min="5" max="25" step="1"></label>
+        <p class="hint" data-i18n="set.chunkHint"></p>
+      </fieldset>
+    </section>
 
     <fieldset>
       <legend data-i18n="set.saving"></legend>
@@ -204,6 +223,18 @@
       <label><span data-i18n="set.memoryDays"></span> <input type="number" id="memoryDays" min="0" max="365" step="1"></label>
       <p class="hint" data-i18n="set.memoryHint"></p>
       <div class="row"><span class="hint" id="memInfo"></span> <button type="button" id="memClear" class="danger" data-i18n="set.memClear"></button></div>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="set.scam"></legend>
+      <label class="check"><input type="checkbox" id="scamCheck"> <span data-i18n="set.scamCheck"></span></label>
+      <p class="hint" data-i18n="set.scamCheckHint"></p>
+      <label class="check"><input type="checkbox" id="certList"> <span data-i18n="set.certList"></span></label>
+      <p class="hint" data-i18n="set.certListHint"></p>
+      <div class="row">
+        <span class="hint" id="certInfo"></span>
+        <button type="button" id="certRefresh" class="small" data-i18n="set.certRefresh"></button>
+      </div>
     </fieldset>
 
     <fieldset>
@@ -279,6 +310,38 @@
   </div>
 </dialog>
 
+<dialog id="sttSetup" class="stt-setup" aria-labelledby="ssTitle">
+  <form method="dialog">
+    <h2 id="ssTitle" data-i18n="ss.title"></h2>
+    <p class="ss-why" id="ssWhy"></p>
+    <section class="ss-opt rec" id="ssLocal">
+      <div class="ss-head"><b data-i18n="ss.local"></b> <span class="ss-badge" data-i18n="ss.recommended"></span></div>
+      <p class="hint" id="ssLocalInfo"></p>
+      <progress id="ssProg" hidden></progress>
+      <p class="hint ss-status" id="ssLocalStatus" role="status" hidden></p>
+      <div class="row">
+        <button type="button" class="primary" id="ssDownload"></button>
+        <button type="button" class="link" id="ssLighter" hidden></button>
+      </div>
+    </section>
+    <section class="ss-opt" id="ssOpenai">
+      <div class="ss-head"><b data-i18n="ss.openai"></b></div>
+      <p class="hint" id="ssOpenaiInfo"></p>
+      <div class="row"><button type="button" id="ssUseOpenai"></button></div>
+    </section>
+    <section class="ss-opt" id="ssChrome">
+      <div class="ss-head"><b data-i18n="ss.chrome"></b></div>
+      <p class="hint" data-i18n="ss.chromeInfo"></p>
+      <div class="row"><button type="button" id="ssUseChrome" data-i18n="ss.useStart"></button></div>
+    </section>
+    <p class="hint" data-i18n="ss.textNote"></p>
+    <div class="row end">
+      <button type="button" id="ssMore" data-i18n="ss.more"></button>
+      <button value="cancel" data-i18n="ss.close"></button>
+    </div>
+  </form>
+</dialog>
+
 <template id="histTpl">
   <article class="hist-item">
     <div class="hist-title"></div>
@@ -300,7 +363,9 @@
       <span class="conf muted"></span>
       <time class="muted"></time>
       <button class="goto" type="button" hidden data-i18n="page.show"></button>
+      <button class="fold icon" type="button" aria-expanded="false"></button>
     </div>
+    <p class="recheck-note" role="status" hidden></p>
     <blockquote class="quote"></blockquote>
     <div class="claim-label"></div>
     <p class="claim"></p>
@@ -318,6 +383,10 @@
     <div class="fb-box" hidden>
       <textarea rows="2" maxlength="1000"></textarea>
       <button type="button" class="fb-done small"></button>
+      <div class="fb-more" hidden>
+        <button type="button" class="recheck small"></button>
+        <label class="recheck-by" hidden><span></span> <select></select></label>
+      </div>
     </div>
   </article>
 </template>
