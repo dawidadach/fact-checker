@@ -4,6 +4,8 @@ import { sourceTier, TIER_TONE } from "./lib/sourcetier.js";
 import { scamHint, scamSignals } from "./lib/scam.js";
 import { certInfoStored, certList, lookup as certLookup } from "./lib/certlist.js";
 import { PageAccessError, runInTab, sameUrl } from "./lib/capture.js";
+import { POST_SITES, SITE_IDS, hasSiteAccess, postSitesOn } from "./lib/postbuttons.js";
+import { hydrateIcons, icon } from "./lib/icons.js";
 import { callModel, KEY_PROVIDERS, listProviderModels, PROVIDERS, providerName } from "./lib/providers.js";
 import { LocalTranscriber, localEngine, MicTranscriber, TabTranscriber } from "./lib/transcribe.js";
 import { deleteModel, detectDevice, getDownloaded, getModel, LANGS, MODELS, storageEstimate } from "./lib/models.js";
@@ -17,10 +19,65 @@ import { addTo, emptyUsage, fmtTokens, fmtUsd, localDay, modeOf, MODES, priceFor
 import { conflicts, FactCheckApiError, pickFactChecks, queryFor, ratingTone, searchClaims } from "./lib/factcheckapi.js";
 import { clearMemory, contentKey, findImages, findInMemory, memoryCount, saveToMemory } from "./lib/memory.js";
 import { PROBLEM_VERDICTS } from "./lib/report.js";
-import { buildReplyRequest, composeReply, originalReply, parseReply, REPLY_TABS, templateReply, X_LIMIT, xLength } from "./lib/reply.js";
+import { buildReplyRequest, composeReply, originalReply, parseReply, templateReply, X_LIMIT, xLength } from "./lib/reply.js";
 import { buildSummaryRequest, GENRE_TONE, LEVEL_TONE, LEVELS, needsSummary, parseSummary, severityRank, summaryKey, validSummary } from "./lib/summary.js";
 
 const $ = (id) => document.getElementById(id);
+
+// ---------- wygląd (projekt „fact-checker-design”): klasy fc-* i ikony Lucide ----------
+const V_UI = { // werdykt → klasa koloru projektu i ikona
+  prawda: ["true", "circle-check"], raczej_prawda: ["mostly", "check"], polprawda: ["half", "contrast"],
+  wprowadza_w_blad: ["misleading", "triangle-alert"], falsz: ["false", "circle-x"], brak_danych: ["nodata", "circle-dashed"],
+  nieweryfikowalne: ["unverifiable", "circle-question-mark"], satyra: ["satire", "drama"],
+};
+const vClass = (v) => `fc-v-${(V_UI[v] || V_UI.brak_danych)[0]}`;
+const vIcon = (v) => (V_UI[v] || V_UI.brak_danych)[1];
+const TONE_CLASS = { good: "fc-v-true", warn: "fc-v-half", bad: "fc-v-false", muted: "fc-v-nodata" };
+const LEVEL_ICON = ["circle-check", "check", "contrast", "triangle-alert", "circle-x"]; // 5 poziomów oceny całości
+const TIER_UI = { dane: "data", dokument: "doc", nauka: "science", urzad: "gov", sondaz: "poll", factcheck: "factcheck", encyklopedia: "encyclopedia", media: "media", social: "social" };
+const KIND_ICON = { article: "file-text", post: "message-square", selection: "text-select", fragment: "file-search", image: "image", area: "scan", tab: "volume-2", mic: "mic", manual: "clipboard-paste" };
+const kindIcon = (kind) => KIND_ICON[kind] || "file-text";
+const CONF_LEVEL = { niska: 1, srednia: 2, wysoka: 3 };
+// Element z klasą i tekstem. Tekst zawsze przez textContent – treść ze stron i od modelu nie trafia do innerHTML.
+function h(tag, cls = "", text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+// Przycisk projektu: wariant (primary/secondary/ghost/soft/danger/icon), ikona, podpis (przy ikonie – dymek i aria-label).
+function fcBtn({ variant = "secondary", size = "sm", iconName, label = "", title = "", cls = "", onClick } = {}) {
+  const b = h("button", `fc-btn fc-btn--${variant}${size && variant !== "icon" ? ` fc-btn--${size}` : ""}${cls ? ` ${cls}` : ""}`);
+  b.type = "button";
+  if (iconName) b.append(icon(iconName));
+  if (variant === "icon") { b.title = title || label; b.setAttribute("aria-label", label || title); }
+  else { if (label) b.append(h("span", "", label)); if (title) b.title = title; }
+  if (onClick) b.onclick = onClick;
+  return b;
+}
+// Pigułka werdyktu: ikona + nazwa (albo ikona + liczba – nazwa wtedy w dymku i dla czytnika ekranu).
+function verdictPill(v, { count, text, button = false } = {}) {
+  const p = h(button ? "button" : "span", `fc-pill pill ${vClass(v)}`);
+  if (button) p.type = "button";
+  p.dataset.tone = VERDICTS[v]?.tone || "muted";
+  p.append(icon(vIcon(v)), h("span", "", text ?? (count != null ? String(count) : verdictLabel(v))));
+  if (count != null) { p.title = verdictLabel(v); p.setAttribute("aria-label", `${verdictLabel(v)}: ${count}`); }
+  return p;
+}
+// Zwijana sekcja (details/summary) w stylu projektu.
+function discEl(title, body, { tone = "", iconName = "", open = false, cls = "" } = {}) {
+  const d = h("details", `fc-disc${tone ? ` ${tone}` : ""}${cls ? ` ${cls}` : ""}`);
+  d.open = open;
+  const s = h("summary");
+  s.append(icon("chevron-right", { cls: "fc-disc__chev" }));
+  if (iconName) s.append(icon(iconName, { cls: "fc-disc__icon" }));
+  s.append(h("span", "", title));
+  const b = h("div", "fc-disc__body");
+  if (typeof body === "string") b.textContent = body; else b.append(body);
+  d.append(s, b);
+  return d;
+}
+const initials = (name) => String(name).split(/\s+/).filter(Boolean).map((p) => [...p][0]).join("").slice(0, 2).toUpperCase();
 const DEFAULTS = {
   provider: "chatgpt", apiKey: "", model: "", webSearch: true,
   keys: {},   // klucze: gemini / anthropic / openrouter (klucz OpenAI to apiKey – służy też do transkrypcji OpenAI)
@@ -38,7 +95,9 @@ const DEFAULTS = {
   tricks: true,          // chwyty erystyczne (fałszywy dylemat, atak na osobę…) – kilka procent tokenów więcej
   scamCheck: true,       // sygnały oszustwa w adresie i treści – lokalnie, 0 tokenów
   certList: true,        // Lista Ostrzeżeń CERT Polska – cały plik raz na 12 h, sprawdzanie u siebie
-  replyTone: "plain",    // ostatnio używany ton odpowiedzi do wklejenia (rzeczowo / na luzie)
+  saveHistory: true,     // zapis sesji w historii (wyłączone: wyniki znikają po zamknięciu panelu)
+  // ikonka „sprawdź” przy postach: postButtonsFb / postButtonsX (osobna zgoda przeglądarki na każdy serwis);
+  // brak wartości → stara wspólna opcja postButtons (lib/postbuttons.js: postSitesOn)
 };
 const SECRET_KEYS = ["apiKey", "keys"]; // to, co przy „nie zapamiętuj kluczy” trafia tylko do pamięci sesji przeglądarki
 let DEVICE = "cpu";
@@ -90,7 +149,7 @@ async function saveSessionNow() {
   clearTimeout(saveTimer);
   saveTimer = null;
   saveDue = 0;
-  if (!session.id || !hasContent(stateContent())) return;
+  if (!session.id || !hasContent(stateContent()) || S.saveHistory === false) return;
   try {
     await putSession(snapshot());
   } catch (e) {
@@ -124,6 +183,7 @@ const findSource = (id) => session.sources.find((x) => x.id === id) || null;
 // Przerwane / nieudane sprawdzenie bez żadnego werdyktu nie zostawia pustego źródła w sesji.
 async function dropEmptySource(id) {
   if (!id || state.claims.some((c) => c.srcId === id)) return;
+  injectReset(findSource(id));
   session.sources = session.sources.filter((x) => x.id !== id);
   groupEl(id, { create: false })?.remove();
   $("empty").hidden = session.sources.length > 0;
@@ -135,12 +195,12 @@ async function dropEmptySource(id) {
 }
 
 async function showLastSession() {
-  const el = $("lastSession");
+  const box = $("lastSession");
   const last = (await listSessions().catch(() => [])).find((x) => x.id !== session.id);
-  el.hidden = !last || session.sources.length > 0;
+  box.hidden = !last || session.sources.length > 0;
   if (!last) return;
   const a = $("lastSessionLink");
-  a.textContent = `${sessionIcon(last)} ${sessionTitle(last)} (${fmtDate(lastActivity(last))})`;
+  a.replaceChildren(icon("clock"), h("span", "", `${t("hist.last")} ${sessionTitle(last)} · ${fmtDate(lastActivity(last))}`), icon("chevron-right"));
   a.onclick = (e) => { e.preventDefault(); openSession(last.id); };
 }
 
@@ -189,7 +249,9 @@ async function renderHistory() {
     const node = $("histTpl").content.firstElementChild.cloneNode(true);
     applyI18n(node);
     if (rec.id === session.id) node.classList.add("current");
-    node.querySelector(".hist-title").textContent = `${sessionIcon(rec)} ${sessionTitle(rec)}` + (rec.id === session.id ? ` · ${t("hist.current")}` : "");
+    const kinds = [...new Set((rec.sources || []).map((x) => x.kind))];
+    node.querySelector(".hist-title").replaceChildren(icon(kinds.length > 1 ? "layers" : kindIcon(kinds[0] || "tab")),
+      h("span", "", sessionTitle(rec) + (rec.id === session.id ? ` · ${t("hist.current")}` : "")));
     const mins = Math.max(1, Math.round((lastActivity(rec) - rec.startedAt) / 60_000));
     node.querySelector(".hist-meta").textContent = t("hist.meta", {
       date: fmtDate(rec.startedAt), dur: t("hist.min", { n: mins }),
@@ -199,18 +261,17 @@ async function renderHistory() {
     const levels = (rec.sources || []).map((src) => validSummary(src, (rec.claims || []).filter((c) => c.srcId === src.id))).filter(Boolean).slice(0, 3);
     const nTricks = (rec.sources || []).reduce((a, src) => a + (src.tricks?.length || 0), 0);
     const scam = (rec.sources || []).some((src) => src.scam?.level === "high") ? "high" : (rec.sources || []).some((src) => src.scam?.level) ? "medium" : "";
+    const tagPill = (cls, iconName, text, title) => { const p = h("span", `fc-pill pill ${cls}`); p.append(icon(iconName), h("span", "", text)); p.title = title; return p; };
     node.querySelector(".hist-pills").replaceChildren(...levels.map((x) => {
-      const p = Object.assign(document.createElement("span"), { className: "pill level", textContent: `📝 ${t(`level.${x.level}`)}`, title: x.headline });
+      const i = LEVELS.indexOf(x.level);
+      const p = h("span", `fc-pill pill level${i >= 0 ? ` fc-o-${i + 1}` : ""}`);
+      p.append(h("span", "lvl-dot"), h("span", "", t(`level.${x.level}`)));
+      p.title = x.headline;
       p.dataset.tone = LEVEL_TONE[x.level] || "muted";
       return p;
-    }), ...Object.entries(VERDICTS).filter(([k]) => counts[k]).map(([k, v]) => {
-      const p = document.createElement("span");
-      p.className = "pill";
-      p.dataset.tone = v.tone;
-      p.textContent = `${verdictLabel(k)}: ${counts[k]}`;
-      return p;
-    }), ...(nTricks ? [Object.assign(document.createElement("span"), { className: "pill trick", textContent: `🎭 ${nTricks}`, title: t("trick.title", { n: nTricks }) })] : []),
-    ...(scam ? [Object.assign(document.createElement("span"), { className: `pill scam ${scam}`, textContent: `⚠ ${t("scam.pill")}`, title: t(scam === "high" ? "scam.titleHigh" : "scam.titleMedium") })] : []));
+    }), ...Object.keys(VERDICTS).filter((k) => counts[k]).sort((a, b) => severityRank(a) - severityRank(b)).map((k) => verdictPill(k, { text: `${verdictLabel(k)}: ${counts[k]}` })),
+    ...(nTricks ? [tagPill("trick fc-v-ploy", "swords", String(nTricks), t("trick.title", { n: nTricks }))] : []),
+    ...(scam ? [tagPill(`scam ${scam} ${scam === "high" ? "fc-v-danger" : "fc-v-warn"}`, "shield-alert", t("scam.pill"), t(scam === "high" ? "scam.titleHigh" : "scam.titleMedium"))] : []));
     node.querySelector("[data-act=open]").onclick = () => openSession(rec.id);
     node.querySelector("[data-act=export]").onclick = () => downloadMarkdown(rec).catch((e) => console.error(e));
     node.querySelector("[data-act=report]").onclick = () => openReport(rec.id);
@@ -229,25 +290,25 @@ async function renderHistory() {
     box.append(p);
   }
   const rated = ratedClaims(all);
-  $("ratingsInfo").textContent = rated.length ? t("fb.count", { n: rated.length, bad: rated.filter((x) => x.rating === "bad").length }) : t("fb.none");
+  $("ratingsInfo").textContent = rated.length ? t("fb.count", { n: rated.length }) : t("fb.none");
   $("exportRatings").disabled = !rated.length;
 }
 // Usuwanie wymaga drugiego kliknięcia w ciągu 4 s.
 function confirmButton(btn, action) {
   let armed = null;
-  let label = "";
+  let saved = "";
+  const restore = () => { btn.innerHTML = saved; btn.classList.remove("confirm"); };
   btn.onclick = async () => {
     if (!armed) {
-      label = btn.textContent;
-      btn.textContent = t("hist.confirm");
+      saved = btn.innerHTML; // stała ikona SVG + podpis z t() – odtwarzamy po 4 s
+      btn.replaceChildren(icon("triangle-alert"), h("span", "", t("hist.confirm")));
       btn.classList.add("confirm");
-      armed = setTimeout(() => { armed = null; btn.textContent = label; btn.classList.remove("confirm"); }, 4000);
+      armed = setTimeout(() => { armed = null; restore(); }, 4000);
       return;
     }
     clearTimeout(armed);
     armed = null;
-    btn.textContent = label;
-    btn.classList.remove("confirm");
+    restore();
     await action();
   };
 }
@@ -393,6 +454,10 @@ function fillSettingsForm() {
   $("scamCheck").checked = S.scamCheck !== false;
   $("certList").checked = S.certList !== false;
   renderCertInfo();
+  const sites = postSitesOn(S);
+  for (const id of SITE_IDS) $(POST_SITES[id].key).checked = sites[id];
+  renderPostButtonsInfo();
+  $("saveHistory").checked = S.saveHistory !== false;
   $("rememberKeys").checked = S.rememberKeys !== false;
   renderMemInfo();
   for (const k of ["sttModel", "intervalSec", "chunkSec", "language", "uiLang"]) $(k).value = S[k];
@@ -408,6 +473,34 @@ function fillSettingsForm() {
   const cur = draft.models[S.provider] || "";
   setModelOptions(modelCache[S.provider] || (cur ? [{ id: cur, name: cur }] : []), cur);
   renderCostSettings();
+  renderAccHints();
+}
+// Jednolinijkowe podsumowanie pod tytułem każdej sekcji ustawień (bez rozwijania widać, co jest ustawione).
+function renderAccHints() {
+  const checked = (name) => document.querySelector(`input[name=${name}]:checked`);
+  const radioName = (name) => {
+    const lab = checked(name)?.closest("label");
+    const txt = (lab?.querySelector(".split-name") || lab?.querySelector("[data-i18n-split]"))?.textContent || "";
+    return txt.trim();
+  };
+  const opt = (id) => $(id).selectedOptions[0]?.textContent || "";
+  $("hintLang").textContent = t("hint.lang", { ui: opt("uiLang"), conv: opt("language") });
+  $("hintProvider").textContent = radioName("provider");
+  $("hintModel").textContent = $("model").value || "";
+  $("hintMode").textContent = radioName("mode");
+  const postsOn = SITE_IDS.filter((id) => $(POST_SITES[id].key).checked).map((id) => t(`set.postSite.${id}`));
+  $("hintPosts").textContent = postsOn.length ? postsOn.join(" · ") : t("hint.off");
+  const lang = getLang();
+  const lim = Number(String($("dailyLimit").value).replace(",", ".")) || 0;
+  $("hintCosts").textContent = [t("hint.today", { cost: fmtUsd(dayUsage.cost, lang) }), lim > 0 ? t("hint.limit", { limit: fmtUsd(lim, lang) }) : ""].filter(Boolean).join(" · ");
+  $("hintFc").textContent = t($("fcKey").value.trim() ? "hint.keySet" : "hint.noKey");
+  $("hintListen").textContent = radioName("engine");
+  const gap = Number($("sessionGap").value) || 0;
+  $("hintSaving").textContent = $("saveHistory").checked ? t(gap > 0 ? "hint.gap" : "hint.gapManual", { h: gap }) : t("hint.noHistory");
+  const days = Math.round(Number($("memoryDays").value) || 0);
+  $("hintMemory").textContent = days > 0 ? t("hint.days", { n: days }) : t("hint.off");
+  $("hintScam").textContent = t($("scamCheck").checked ? "hint.on" : "hint.off") + ($("scamCheck").checked && $("certList").checked ? " · CERT Polska" : "");
+  $("hintPrivacy").textContent = [$("maskPeople").checked ? t("hint.masked") : "", t($("rememberKeys").checked ? "hint.keysKept" : "hint.keysSession")].filter(Boolean).join(" · ");
 }
 
 function readSettingsForm() {
@@ -432,6 +525,8 @@ function readSettingsForm() {
   S.tricks = $("tricks").checked;
   S.scamCheck = $("scamCheck").checked;
   S.certList = $("certList").checked;
+  for (const id of SITE_IDS) S[POST_SITES[id].key] = $(POST_SITES[id].key).checked;
+  S.saveHistory = $("saveHistory").checked;
   S.rememberKeys = $("rememberKeys").checked;
   S.sessionGapH = clamp(Number($("sessionGap").value) || 0, 0, 72);
   S.sttModel = $("sttModel").value.trim() || DEFAULTS.sttModel;
@@ -466,9 +561,7 @@ async function renderModels() {
   if (!have[selected]) selected = ""; // usunięty model nie może zostać wybrany
   list.replaceChildren();
   for (const lang of Object.keys(LANGS)) {
-    const h = document.createElement("h3");
-    h.textContent = t(`lang.${lang}`);
-    list.append(h);
+    list.append(h("h3", "", t(`lang.${lang}`)));
     for (const m of MODELS.filter((x) => x.lang === lang)) {
       const row = document.createElement("div");
       row.className = `model${m.id === selected ? " active" : ""}`;
@@ -483,13 +576,12 @@ async function renderModels() {
         <div class="mnote">${esc(m.note[getLang()] || m.note.en)}</div>`;
       const act = row.querySelector(".actions");
       if (dl) {
-        const pr = document.createElement("progress");
+        const pr = h("progress");
         if (dl.total) { pr.max = dl.total; pr.value = dl.loaded; }
         row.append(pr);
         act.textContent = dl.total ? `${Math.round((100 * dl.loaded) / dl.total)}%` : "…";
       } else if (isHave) {
-        const del = document.createElement("button");
-        del.type = "button"; del.textContent = t("models.delete");
+        const del = fcBtn({ variant: "ghost", iconName: "trash-2", label: t("models.delete"), cls: "danger" });
         del.onclick = async () => {
           if (localEngine.ready?.repo === m.repo) localEngine.unload();
           await deleteModel(m.id);
@@ -498,8 +590,7 @@ async function renderModels() {
         };
         act.append(del);
       } else {
-        const get = document.createElement("button");
-        get.type = "button"; get.textContent = t("models.download");
+        const get = fcBtn({ variant: "secondary", iconName: "download", label: t("models.download") });
         get.onclick = () => downloadModel(m.id);
         act.append(get);
       }
@@ -681,13 +772,17 @@ async function loadModels(provider = S.provider) {
 // ---------- UI pomocnicze ----------
 function setStatus(text, mode) {
   $("status").textContent = text;
-  $("liveDot").className = `dot ${mode || (state.running ? "live" : "")}`;
+  const m = mode || (state.running ? "live" : "");
+  $("liveDot").className = `fc-dot${m === "live" ? " fc-dot--live" : m === "busy" ? " fc-dot--busy" : ""}`;
 }
 function banner(html, kind = "warn") {
   const b = $("banner");
   if (!html) { b.hidden = true; return; }
-  b.className = `banner ${kind === "error" ? "error" : ""}`;
-  b.innerHTML = html;
+  const err = kind === "error";
+  b.className = `fc-note banner ${err ? "fc-v-danger error" : "fc-v-warn"}`;
+  const body = h("span");
+  body.innerHTML = html; // komunikaty wtyczki (esc() na danych) z linkami „Otwórz ustawienia” itp.
+  b.replaceChildren(icon(err ? "circle-alert" : "info"), body);
   b.hidden = false;
   b.querySelector("[data-open-settings]")?.addEventListener("click", openSettings);
 }
@@ -720,12 +815,12 @@ function renderTranscript() {
       const src = findSource(seg.srcId);
       const sep = document.createElement("div");
       sep.className = "tx-sep";
-      sep.textContent = src ? `${sourceIcon(src)} ${sourceTitle(src)}` : "—";
+      sep.textContent = src ? `${t(`kind.${src.kind || "tab"}`)} · ${sourceTitle(src)}` : "—";
       nodes.push(sep);
     }
     if (seg.srcId !== prev) prevSpk = "";
     prev = seg.srcId;
-    if ((seg.speaker || "") !== prevSpk && seg.speaker) nodes.push(Object.assign(document.createElement("b"), { className: "tx-spk", textContent: `🗣 ${seg.speaker}: ` }));
+    if ((seg.speaker || "") !== prevSpk && seg.speaker) nodes.push(h("b", "tx-spk", `${seg.speaker}: `));
     prevSpk = seg.speaker || "";
     const span = document.createElement("span");
     span.className = seg.checked ? "checked" : "";
@@ -742,26 +837,27 @@ function renderTranscript() {
 }
 
 function renderSummary() {
-  $("sumPills").replaceChildren(pillsEl(state.claims, "sum-pills"));
+  if (state.vFilter && !state.claims.some((c) => c.verdict === state.vFilter)) state.vFilter = null;
+  $("sumPills").replaceChildren(...pillsEl(state.claims, "", { filter: true }).children);
   const problems = state.claims.filter((c) => PROBLEM_VERDICTS.includes(c.verdict)).length;
-  const btn = $("onlyProblems");
-  btn.textContent = S.onlyProblems ? t("filter.showAll", { n: state.claims.length }) : t("filter.only", { n: problems });
-  btn.setAttribute("aria-pressed", String(!!S.onlyProblems));
-  btn.classList.toggle("on", !!S.onlyProblems);
+  const sw = $("onlyProblems");
+  sw.setAttribute("aria-checked", String(!!S.onlyProblems));
+  sw.classList.toggle("on", !!S.onlyProblems);
+  $("onlyProblemsLabel").textContent = t("filter.only", { n: problems });
+  $("onlyProblemsRow").hidden = !state.claims.length;
   $("feed").classList.toggle("only-problems", !!S.onlyProblems);
-  $("summary").hidden = !state.claims.length;
+  $("summary").hidden = !state.claims.length && $("costLine").hidden;
 }
 
 // ---------- feed: karty pogrupowane według źródeł (najświeższe źródło na górze) ----------
 function groupEl(srcId, { create = true } = {}) {
   let g = [...$("feed").querySelectorAll(".src-group")].find((x) => x.dataset.src === srcId);
   if (!g && create) {
-    g = document.createElement("section");
-    g.className = "src-group";
+    g = h("section", "src-group");
     g.dataset.src = srcId;
-    g.append(document.createElement("header"), Object.assign(document.createElement("div"), { className: "cards" }),
-      Object.assign(document.createElement("div"), { className: "tricks", hidden: true }),
-      Object.assign(document.createElement("p"), { className: "src-note muted" }));
+    const tricks = h("div", "tricks");
+    tricks.hidden = true;
+    g.append(h("header", "src-head fc-card"), h("div", "src-extra"), h("div", "cards"), tricks, h("p", "src-note"));
     renderGroupHead(g);
     $("empty").after(g);
     $("empty").hidden = true;
@@ -772,74 +868,69 @@ const toTop = (g) => { if (g && $("empty").nextElementSibling !== g) $("empty").
 
 function renderGroupHead(g) {
   const src = findSource(g.dataset.src) || {};
-  const head = g.querySelector("header");
-  head.className = "src-head";
+  const head = g.querySelector(".src-head");
+  const extra = g.querySelector(".src-extra");
+  const wasOpen = !!head.querySelector(".src-text")?.open;
   head.replaceChildren();
-  const toggle = document.createElement("button");
-  toggle.type = "button";
-  toggle.className = "src-toggle icon";
-  toggle.textContent = g.classList.contains("collapsed") ? "▸" : "▾";
-  toggle.setAttribute("aria-label", t(g.classList.contains("collapsed") ? "src.expand" : "src.collapse"));
-  toggle.onclick = () => { g.classList.toggle("collapsed"); renderGroupHead(g); };
-  const title = document.createElement(src.url ? "a" : "span");
-  title.className = "src-title";
-  title.textContent = `${sourceIcon(src)} ${sourceTitle(src)}`;
-  if (src.url) { title.href = src.url; title.target = "_blank"; title.rel = "noopener noreferrer"; }
-  const meta = document.createElement("span");
-  meta.className = "src-meta muted";
-  const n = state.claims.filter((c) => c.srcId === src.id).length;
-  meta.textContent = [t(`kind.${src.kind || "tab"}`), src.meta?.site, src.at && hhmm(src.at).slice(0, 5), n ? t("src.count", { n }) : ""].filter(Boolean).join(" · ");
-  head.append(toggle, title, meta);
+  extra.replaceChildren();
+  const collapsed = g.classList.contains("collapsed");
   const mine = state.claims.filter((c) => c.srcId === src.id);
-  if (mine.length > 1) {
-    const pills = pillsEl(mine, "src-pills");
-    const all = Object.assign(document.createElement("button"), {
-      type: "button", className: "small reply-all",
-      textContent: `💬 ${t(src.kind === "post" ? "rp.allPost" : src.kind === "article" ? "rp.allArticle" : "rp.allClaims")}`,
-      title: t("rp.allHint"),
-    });
-    all.onclick = () => openReply([...mine].sort((a, b) => (a.t || 0) - (b.t || 0)), src);
-    pills.append(all);
-    head.append(pills);
-  }
+  // rodzaj źródła · serwis · godzina · liczba werdyktów · zwijanie
+  const top = h("div", "src-top");
+  const kind = h("span", "fc-tag");
+  kind.append(icon(kindIcon(src.kind)), t(`kind.${src.kind || "tab"}`));
+  const meta = h("span", "src-meta fc-t-12 fc-faint", [src.meta?.site, src.at && hhmm(src.at).slice(0, 5), mine.length ? t("src.count", { n: mine.length }) : ""].filter(Boolean).join(" · "));
+  const toggle = fcBtn({ variant: "icon", iconName: "chevron-right", label: t(collapsed ? "src.expand" : "src.collapse"), cls: "src-toggle", onClick: () => { g.classList.toggle("collapsed"); renderGroupHead(g); } });
+  toggle.setAttribute("aria-expanded", String(!collapsed));
+  top.append(kind, meta, toggle);
+  const title = h(src.url ? "a" : "span", "src-title", sourceTitle(src));
+  if (src.url) { title.href = src.url; title.target = "_blank"; title.rel = "noopener noreferrer"; title.append(icon("external-link")); }
+  head.append(top, title);
   if (src.kind !== "manual") head.append(dateEl(src));
-  const memInfo = src.fromMemory || src.imagesFromMemory;
-  if (memInfo) {
-    const mem = document.createElement("div");
-    mem.className = "src-mem";
-    const key = src.imagesFromMemory ? "mem.groupImagesText" : src.fromMemory.images ? "mem.groupImage" : "mem.groupNote";
-    mem.append(`🧠 ${t(key, { date: fmtDate(memInfo.at), model: memInfo.model || "?" })} `);
-    if (recheck.has(src.id)) {
-      const b = Object.assign(document.createElement("button"), { type: "button", className: "small", textContent: `↻ ${t("mem.recheck")}` });
-      b.onclick = () => recheckSource(src);
-      mem.append(b);
-    }
-    head.append(mem);
-  }
-  renderTricks(g, src);
-  if (src.scam?.level && S.scamCheck !== false) head.append(scamEl(src.scam));
   const sum = summaryState(src, mine);
   g.classList.toggle("summarised", sum?.status === "ready");
-  if (sum) head.append(summaryEl(g, src, sum, mine));
-  arrangeCards(g, mine);
+  if (mine.length > 1) {
+    const pills = pillsEl(mine, "src-pills");
+    if (sum?.status !== "ready") { // bez oceny całości – „Rozwiń karty” tutaj (z oceną – w jej stopce)
+      const all = g.classList.contains("open-all");
+      const tog = fcBtn({ variant: "ghost", iconName: all ? "chevron-down" : "list-checks", label: t(all ? "sum.collapseAll" : "sum.expandAll"), cls: "open-toggle", onClick: () => setOpenAll(g, !all) });
+      tog.setAttribute("aria-expanded", String(all));
+      pills.append(tog);
+    }
+    if (sum?.status !== "ready") { // z oceną całości – „Kopiuj jako odpowiedź” jest w jej stopce
+      pills.append(fcBtn({ variant: "secondary", iconName: "message-square-reply", cls: "reply-all", title: t("rp.allHint"),
+        label: t(src.kind === "post" ? "rp.allPost" : src.kind === "article" ? "rp.allArticle" : "rp.allClaims"),
+        onClick: () => openReply([...mine].sort((a, b) => (a.t || 0) - (b.t || 0)), src) }));
+    }
+    head.append(pills);
+  }
+  const memInfo = src.fromMemory || src.imagesFromMemory;
+  if (memInfo) {
+    const mem = h("div", "src-mem fc-note");
+    const key = src.imagesFromMemory ? "mem.groupImagesText" : src.fromMemory.images ? "mem.groupImage" : "mem.groupNote";
+    mem.append(icon("brain"), h("span", "", t(key, { date: fmtDate(memInfo.at), model: memInfo.model || "?" })));
+    if (recheck.has(src.id)) mem.append(fcBtn({ variant: "secondary", iconName: "rotate-ccw", label: t("mem.recheck"), onClick: () => recheckSource(src) }));
+    head.append(mem);
+  }
   const hidden = S.onlyProblems ? mine.filter((c) => !PROBLEM_VERDICTS.includes(c.verdict)).length : 0;
-  if (hidden) head.append(Object.assign(document.createElement("div"), { className: "src-hidden muted", textContent: t("filter.hiddenN", { n: hidden }) }));
+  if (hidden) head.append(h("div", "src-hidden", t("filter.hiddenN", { n: hidden })));
   if (src.images?.length) head.append(imagesEl(src));
-  const wasOpen = !!g.querySelector(".src-text")?.open;
   const audio = src.kind === "tab" || src.kind === "mic";
   const segs = audio ? state.segments.filter((x) => x.srcId === src.id) : [];
   const text = audio ? segs.map((x) => x.text).join(" ") : src.text;
   if (text && (audio || isPageKind(src.kind) || src.kind === "manual")) {
-    const det = document.createElement("details");
-    det.className = "src-text";
-    det.open = wasOpen;
-    const sum = document.createElement("summary");
-    sum.textContent = t(audio ? "src.transcript" : "src.text", { n: wordCount(audio ? segs : [{ text }]) });
-    const body = document.createElement("div");
-    body.textContent = text;
-    det.append(sum, body);
+    const det = discEl(t(audio ? "src.transcript" : "src.text", { n: wordCount(audio ? segs : [{ text }]) }), h("div", "src-text-body", text), { cls: "src-text", open: wasOpen });
     head.append(det);
   }
+  renderTricks(g, src);
+  // ostrzeżenie o wysokim ryzyku oszustwa – nad oceną całości, o sygnałach – pod nią
+  const scam = src.scam?.level && S.scamCheck !== false ? scamEl(src.scam) : null;
+  if (scam && src.scam.level === "high") extra.append(scam);
+  if (sum) extra.append(summaryEl(g, src, sum, mine));
+  if (scam && src.scam.level !== "high") extra.append(scam);
+  arrangeCards(g, mine);
+  g.querySelectorAll(".cards .card").forEach((n) => n._paint?.());
+  if (src.via === "button") injectUpdate(src);
 }
 // ---------- ocena całości (lib/summary.js) ----------
 // Artykuł, post, mem, infografika: poziom (5 nazwanych stopni), jedno-dwa zdania i punkty ✓ ✗ ⚠ nad kartami.
@@ -847,7 +938,8 @@ function renderGroupHead(g) {
 // linii (problemy na górze) – szczegóły po kliknięciu. Dla dźwięku nie ma (tam jest raport).
 const summaryJobs = new Map(); // srcId → odcisk werdyktów, dla którego trwa pisanie
 const memKeys = new Map();     // srcId → klucz w pamięci werdyktów (żeby dopisać do niej podsumowanie)
-const openCards = new Set();   // id kart rozwiniętych w źródle z podsumowaniem
+const openCards = new Set();   // id kart rozwiniętych przez użytkownika
+const closedCards = new Set(); // id kart zwiniętych przez użytkownika (domyślnie otwarte: jedyna karta źródła, najnowsza z nagrania)
 const rechecking = new Set();       // „Sprawdź dokładniej”: id twierdzeń sprawdzanych właśnie od nowa
 const recheckErrors = new Map();    // id → błąd ostatniej próby (nie trafia do historii)
 function summaryState(src, claims = state.claims.filter((c) => c.srcId === src.id)) {
@@ -861,66 +953,88 @@ function summaryState(src, claims = state.claims.filter((c) => c.srcId === src.i
   return { status: "missing" };
 }
 function summaryEl(g, src, st, claims) {
-  const box = document.createElement("div");
-  box.className = `src-sum ${st.status}`;
+  const box = h("section", `src-sum fc-card fc-stack ${st.status}`);
+  box.setAttribute("aria-label", t("sum.title"));
   if (st.status === "pending") {
-    box.append(Object.assign(document.createElement("span"), { className: "sum-wait", textContent: t("sum.pending") }));
+    const w = h("span", "sum-wait");
+    w.append(icon("loader-circle", { cls: "fc-spin" }), h("span", "", t("sum.pending")));
+    box.append(w);
     return box;
   }
   if (st.status !== "ready") {
-    if (st.status === "error") box.append(Object.assign(document.createElement("p"), { className: "sum-err", textContent: t("sum.error", { msg: st.s.error }) }));
-    const b = Object.assign(document.createElement("button"), { type: "button", className: "small", textContent: st.status === "error" ? `↻ ${t("sum.retry")}` : `📝 ${t("sum.make")}` });
-    b.onclick = () => maybeSummarize(src, { force: true });
-    box.append(b);
+    if (st.status === "error") box.append(h("p", "sum-err", t("sum.error", { msg: st.s.error })));
+    box.append(fcBtn({ variant: "secondary", iconName: st.status === "error" ? "rotate-ccw" : "sparkles", label: t(st.status === "error" ? "sum.retry" : "sum.make"), onClick: () => maybeSummarize(src, { force: true }) }));
     return box;
   }
   const s = st.s;
   box.dataset.tone = LEVEL_TONE[s.level] || "muted";
-  const top = Object.assign(document.createElement("div"), { className: "sum-top" });
-  const again = Object.assign(document.createElement("button"), { type: "button", className: "icon small sum-again", textContent: "↻", title: t("sum.regen") });
-  again.setAttribute("aria-label", t("sum.regen"));
-  again.onclick = () => maybeSummarize(src, { force: true });
-  top.append(Object.assign(document.createElement("span"), { className: "sum-cap", textContent: t("sum.title") }), again,
-    Object.assign(document.createElement("span"), { className: "sum-break" }));
-  const level = Object.assign(document.createElement("span"), { className: "sum-level", textContent: t(`level.${s.level}`) });
-  top.append(level);
-  const pos = LEVELS.indexOf(s.level);
-  if (pos >= 0) {
-    const scale = Object.assign(document.createElement("span"), { className: "sum-scale", title: LEVELS.map((l) => t(`level.${l}`)).join(" → ") });
-    scale.setAttribute("aria-hidden", "true");
-    scale.append(...LEVELS.map((_, i) => Object.assign(document.createElement("i"), { className: i === pos ? "on" : "" })));
-    top.append(scale);
-  }
+  const pos = LEVELS.indexOf(s.level); // -1 = „Nie do oceny”
+  const top = h("div", "fc-row sum-top");
+  const right = h("span", "fc-row");
   if (s.genre && s.genre !== "inne") {
-    const genre = Object.assign(document.createElement("span"), { className: "sum-genre", textContent: t(`genre.${s.genre}`), title: t("genre.title") });
-    if (GENRE_TONE[s.genre]) genre.dataset.tone = GENRE_TONE[s.genre];
-    top.append(genre);
+    const tone = GENRE_TONE[s.genre];
+    const genre = h("span", `fc-tag sum-genre${tone === "bad" ? " fc-v-danger" : tone === "warn" ? " fc-v-warn" : ""}`);
+    genre.append(icon(tone ? "triangle-alert" : "info"), t(`genre.${s.genre}`));
+    genre.title = t("genre.title");
+    if (tone) genre.dataset.tone = tone;
+    right.append(genre);
   }
-  box.append(top, Object.assign(document.createElement("p"), { className: "sum-head", textContent: s.headline }));
-  const ul = document.createElement("ul");
-  ul.className = "sum-pts";
-  for (const [cls, mark, list] of [["ok", "✓", s.ok], ["wrong", "✗", s.wrong], ["ctx", "⚠", s.context], ["side", "⚖", s.side ? [s.side] : []]]) {
+  right.append(fcBtn({ variant: "icon", iconName: "rotate-ccw", label: t("sum.regen"), cls: "sum-again", onClick: () => maybeSummarize(src, { force: true }) }));
+  top.append(h("span", "fc-label sum-cap", t("sum.title")), right);
+  const level = h("div", `fc-overall__level ${pos >= 0 ? `fc-o-${pos + 1}` : "na"}`);
+  const badge = h("span", "fc-overall__badge");
+  badge.append(icon(pos >= 0 ? LEVEL_ICON[pos] : "circle-dashed"));
+  level.append(badge, h("span", "sum-level", t(`level.${s.level}`)));
+  const scale = h("div", "fc-meter sum-scale");
+  scale.setAttribute("role", "meter");
+  scale.setAttribute("aria-valuemin", "1");
+  scale.setAttribute("aria-valuemax", String(LEVELS.length));
+  if (pos >= 0) scale.setAttribute("aria-valuenow", String(pos + 1));
+  scale.setAttribute("aria-valuetext", t(`level.${s.level}`));
+  scale.append(...LEVELS.map((l, i) => {
+    const seg = h("i", `fc-meter__seg fc-o-${i + 1}${i === pos ? " is-on is-active on" : ""}`);
+    seg.title = t(`level.${l}`);
+    return seg;
+  }));
+  const labels = h("div", "fc-meter__labels");
+  labels.append(h("span", "", t(`level.${LEVELS[0]}`)), h("span", "", t(`level.${LEVELS.at(-1)}`)));
+  const meter = h("div");
+  meter.append(scale, labels);
+  box.append(top, level, meter, h("p", "fc-t-14 fc-muted sum-head", s.headline));
+  const ul = h("ul", "fc-points sum-pts");
+  for (const [cls, tone, ic, lab, list] of [["ok", "fc-v-true", "check", "sum.okLabel", s.ok], ["wrong", "fc-v-false", "x", "sum.wrongLabel", s.wrong],
+    ["ctx", "fc-v-half", "circle-alert", "sum.ctxLabel", s.context], ["side", "fc-v-satire", "scale", "sum.sideLabel", s.side ? [s.side] : []]]) {
     for (const x of list || []) {
-      const li = document.createElement("li");
-      li.className = cls;
-      li.append(Object.assign(document.createElement("b"), { textContent: mark }), ` ${x}`);
+      const li = h("li", `${cls} ${tone}`);
+      li.append(icon(ic, { label: t(lab) }), h("span", "", x));
       ul.append(li);
     }
   }
   if (ul.children.length) box.append(ul);
-  const foot = Object.assign(document.createElement("div"), { className: "sum-foot" });
-  foot.append(Object.assign(document.createElement("span"), { className: "muted", textContent: t(claims.length === 1 ? "sum.scope1" : "sum.scope", { n: claims.length }) }));
+  const foot = h("div", "fc-row sum-foot");
+  foot.append(h("span", "", t(claims.length === 1 ? "sum.scope1" : "sum.scope", { n: claims.length })));
   const all = g.classList.contains("open-all");
-  const tog = Object.assign(document.createElement("button"), { type: "button", className: "small", textContent: t(all ? "sum.collapseAll" : "sum.expandAll") });
+  const tog = fcBtn({ variant: "ghost", iconName: all ? "chevron-down" : "list-checks", label: t(all ? "sum.collapseAll" : "sum.expandAll"), onClick: () => setOpenAll(g, !all) });
   tog.setAttribute("aria-expanded", String(all));
-  tog.onclick = () => { g.classList.toggle("open-all"); renderGroupHead(g); };
-  foot.append(tog);
+  const acts = h("div", "fc-row sum-acts");
+  acts.append(tog, fcBtn({ variant: "soft", iconName: "copy", label: t("reply.copy"), title: t("rp.allHint"), cls: "reply-all",
+    onClick: () => openReply([...claims].sort((a, b) => (a.t || 0) - (b.t || 0)), src) }));
+  foot.append(acts);
   box.append(foot);
   return box;
 }
+// „Rozwiń karty” / „Zwiń karty” – wszystkie karty źródła naraz (pojedynczą można potem zwinąć).
+function setOpenAll(g, on) {
+  g.classList.toggle("open-all", on);
+  for (const c of state.claims.filter((x) => x.srcId === g.dataset.src)) {
+    if (on) { openCards.add(c.id); closedCards.delete(c.id); } else { openCards.delete(c.id); closedCards.add(c.id); }
+  }
+  renderGroupHead(g);
+}
 // Kolejność kart: w źródle z podsumowaniem najpierw problemy (potem prawda), w pozostałych – najnowsze na górze.
 function arrangeCards(g, claims) {
-  if (!g.classList.contains("summarised")) return;
+  const src = findSource(g.dataset.src);
+  if (!src || src.kind === "tab" || src.kind === "mic") return; // nagranie: najnowsze na górze
   const list = g.querySelector(".cards");
   const byId = new Map(claims.map((c) => [c.id, c]));
   const nodes = [...list.children].filter((n) => n.classList.contains("card") && !n.classList.contains("skeleton"));
@@ -1009,38 +1123,42 @@ function renderTricks(g, src) {
   if (!list.length) {
     // sprawdzane, ale nic wyraźnego – krótka linijka, żeby było widać, że funkcja działa
     box.hidden = !src.tricksChecked || S.tricks === false;
-    box.replaceChildren(Object.assign(document.createElement("p"), { className: "tricks-none hint", textContent: `🎭 ${t("trick.none")}`, title: t("trick.noneHint") }));
+    const p = h("p", "tricks-none fc-note");
+    p.title = t("trick.noneHint");
+    p.append(icon("drama"), h("span", "", t("trick.none")));
+    box.replaceChildren(p);
     return;
   }
   box.hidden = false;
-  const det = Object.assign(document.createElement("details"), { open: !closedTricks.has(src.id) });
+  const det = h("details", "fc-acc fc-v-ploy tricks-acc");
+  det.open = !closedTricks.has(src.id);
   det.addEventListener("toggle", () => { if (det.open) closedTricks.delete(src.id); else closedTricks.add(src.id); box.dataset.sig = ""; });
-  const sum = document.createElement("summary");
-  sum.append(Object.assign(document.createElement("b"), { textContent: `🎭 ${t("trick.title", { n: list.length })}` }));
-  det.append(sum, Object.assign(document.createElement("p"), { className: "hint trick-note", textContent: t("trick.note") }));
+  const sum = h("summary");
+  const ic = h("span", "fc-acc__icon");
+  ic.append(icon("swords"));
+  sum.append(ic, h("span", "fc-grow fc-strong", t("trick.heading")), h("span", "fc-pill", String(list.length)), icon("chevron-right", { cls: "fc-acc__chev" }));
+  sum.title = t("trick.title", { n: list.length });
+  const body = h("div", "fc-acc__body");
+  body.append(h("p", "fc-field__hint trick-note", t("trick.note")));
   for (const x of list) {
     const d = TRICKS[x.trick];
     if (!d) continue;
-    const item = Object.assign(document.createElement("div"), { className: "trick" });
-    const head = Object.assign(document.createElement("div"), { className: "trick-head" });
-    head.append(Object.assign(document.createElement("span"), { className: "trick-name", textContent: trickName(x.trick, lang) }));
-    if (x.speaker) head.append(Object.assign(document.createElement("span"), { className: "muted", textContent: x.speaker }));
-    if (isPageKind(src.kind) && x.inPage !== false && x.quote) {
-      const go = Object.assign(document.createElement("button"), { type: "button", className: "goto", textContent: t("page.show") });
-      go.onclick = () => showInPage(x);
-      head.append(go);
-    }
-    const more = document.createElement("details");
-    more.className = "trick-more";
-    more.append(Object.assign(document.createElement("summary"), { textContent: t("trick.more") }),
-      Object.assign(document.createElement("p"), { textContent: d.def[lang] || d.def.en }));
-    const ans = document.createElement("p");
-    ans.append(Object.assign(document.createElement("b"), { textContent: `${t("trick.answer")} ` }), d.answer[lang] || d.answer.en);
-    more.append(ans);
-    item.append(head, Object.assign(document.createElement("blockquote"), { className: "quote", textContent: `„${x.quote}”` }),
-      Object.assign(document.createElement("p"), { className: "trick-why", textContent: x.why }), more);
-    det.append(item);
+    const item = h("div", "fc-ploy trick");
+    const head = h("div", "fc-row trick-head");
+    const name = h("span", "fc-ploy__name trick-name");
+    name.append(icon("swords"), h("span", "", trickName(x.trick, lang)));
+    head.append(name);
+    if (x.speaker) head.append(h("span", "fc-t-12 fc-faint", x.speaker));
+    if (isPageKind(src.kind) && x.inPage !== false && x.quote) head.append(fcBtn({ variant: "ghost", iconName: "locate-fixed", label: t("page.show"), cls: "goto", onClick: () => showInPage(x) }));
+    const why = h("div", "fc-t-13 fc-muted trick-why");
+    why.append(h("strong", "", `${t("trick.why")} `), x.why);
+    const ans = h("div", "fc-t-13 fc-muted trick-answer");
+    ans.append(h("strong", "", `${t("trick.answer")} `), d.answer[lang] || d.answer.en);
+    item.append(head, h("div", "fc-t-13 trick-quote", `„${x.quote}”`), why, ans,
+      discEl(t("trick.def"), h("p", "", d.def[lang] || d.def.en), { cls: "trick-more" }));
+    body.append(item);
   }
+  det.append(sum, body);
   box.replaceChildren(det);
 }
 
@@ -1074,15 +1192,35 @@ function computeScam(src) {
   return src.scam || null;
 }
 function scamEl(scam) {
-  const box = Object.assign(document.createElement("div"), { className: `scam-box ${scam.level}` });
+  const high = scam.level === "high";
+  const box = h("section", `scam-box fc-scam ${scam.level}${high ? " fc-scam--high" : ""}`);
   box.setAttribute("role", "note");
-  box.append(Object.assign(document.createElement("b"), { className: "scam-title", textContent: `⚠ ${t(scam.level === "high" ? "scam.titleHigh" : "scam.titleMedium")}` }));
-  const ul = document.createElement("ul");
-  for (const s of scam.signals.slice(0, 6)) ul.append(Object.assign(document.createElement("li"), { textContent: scamLine(s) }));
-  box.append(ul, Object.assign(document.createElement("p"), { className: "scam-advice", textContent: t("scam.advice") }));
-  const rep = Object.assign(document.createElement("p"), { className: "scam-report" });
-  rep.append(`${t("scam.report")} `, Object.assign(document.createElement("a"), { href: "https://incydent.cert.pl/", target: "_blank", rel: "noopener noreferrer", textContent: "incydent.cert.pl" }), ` · ${t("scam.reportSms")}`);
-  box.append(rep, Object.assign(document.createElement("p"), { className: "hint", textContent: t("scam.note") }));
+  const head = h("div", "fc-scam__head");
+  const ic = h("span", "fc-scam__icon");
+  ic.append(icon(high ? "shield-x" : "shield-alert"));
+  const txt = h("div", "fc-grow");
+  txt.append(h("div", "fc-scam__title scam-title", t(high ? "scam.titleHigh" : "scam.titleMedium")), h("div", "fc-t-13 fc-muted", t(high ? "scam.subHigh" : "scam.subMedium")));
+  head.append(ic, txt);
+  const ul = h("ul", "fc-scam__signals");
+  for (const sig of scam.signals.slice(0, 6)) {
+    const li = h("li");
+    li.append(icon("circle-alert"), h("span", "", scamLine(sig)));
+    ul.append(li);
+  }
+  const advice = h("div", "fc-note fc-v-true scam-advice");
+  advice.append(icon("lightbulb"), h("span", "", t("scam.advice")));
+  const row = h("div", "fc-row");
+  const cert = h("a", `fc-btn fc-btn--sm ${high ? "fc-btn--danger" : "fc-btn--secondary"}`);
+  cert.href = "https://incydent.cert.pl/";
+  cert.target = "_blank";
+  cert.rel = "noopener noreferrer";
+  cert.append(icon("flag"), h("span", "", t("scam.reportBtn")));
+  const why = h("p", "fc-field__hint scam-note", t("scam.why"));
+  why.hidden = true;
+  const whyBtn = fcBtn({ variant: "ghost", label: t("scam.whyBtn"), onClick: () => { why.hidden = !why.hidden; whyBtn.setAttribute("aria-expanded", String(!why.hidden)); } });
+  whyBtn.setAttribute("aria-expanded", "false");
+  row.append(cert, whyBtn);
+  box.append(head, ul, advice, h("p", "scam-report", t("scam.reportOther")), row, why);
   return box;
 }
 async function renderCertInfo() {
@@ -1093,33 +1231,32 @@ async function renderCertInfo() {
 }
 
 // Liczniki werdyktów („Prawda: 3 · Fałsz: 2”).
-function pillsEl(claims, className) {
+function pillsEl(claims, className, { filter = false } = {}) {
   const counts = verdictCounts(claims);
-  const box = document.createElement("div");
-  box.className = className;
-  box.append(...Object.entries(VERDICTS).filter(([k]) => counts[k]).map(([k, v]) => {
-    const p = document.createElement("span");
-    p.className = "pill";
-    p.dataset.tone = v.tone;
-    p.textContent = `${verdictLabel(k)}: ${counts[k]}`;
+  const box = h("div", `fc-row ${className}`.trim());
+  box.append(...Object.keys(VERDICTS).filter((k) => counts[k]).sort((a, b) => severityRank(a) - severityRank(b)).map((k) => {
+    const p = verdictPill(k, { count: counts[k], button: filter });
+    if (filter) { // pigułki nad listą filtrują karty po werdykcie
+      p.setAttribute("aria-pressed", String(state.vFilter === k));
+      p.onclick = () => { state.vFilter = state.vFilter === k ? null : k; renderFeed(); };
+    }
     return p;
   }));
   return box;
 }
 // Data wypowiedzi przy źródle: z metadanych strony / filmu, „na żywo” albo wpisana ręcznie (✎).
 function dateEl(src) {
-  const row = document.createElement("div");
-  row.className = "src-date muted";
+  const row = h("div", "src-date");
   const d = srcDate(src);
   const live = src.kind === "mic" || src.live;
-  const label = Object.assign(document.createElement("span"), {
-    textContent: `📅 ${d ? t(src.dateSource === "user" ? "date.user" : "date.page", { date: fmtDay(d) }) : live ? t("date.live") : t("date.unknown")}`,
-    title: t("date.hint"),
-  });
-  const edit = Object.assign(document.createElement("button"), { type: "button", className: "icon small", textContent: "✎", title: t("date.edit") });
-  edit.setAttribute("aria-label", t("date.edit"));
+  const label = h("span", "", d ? t(src.dateSource === "user" ? "date.user" : "date.page", { date: fmtDay(d) }) : live ? t("date.live") : t("date.unknown"));
+  label.title = t("date.hint");
+  const edit = fcBtn({ variant: "icon", iconName: "pencil", label: t("date.edit") });
   edit.onclick = () => {
-    const input = Object.assign(document.createElement("input"), { type: "date", value: d, max: new Date().toISOString().slice(0, 10) });
+    const input = h("input", "fc-input fc-input--sm");
+    input.type = "date";
+    input.value = d;
+    input.max = new Date().toISOString().slice(0, 10);
     input.setAttribute("aria-label", t("date.edit"));
     const done = () => {
       src.date = input.value;
@@ -1131,10 +1268,10 @@ function dateEl(src) {
     };
     input.onchange = done;
     input.onkeydown = (e) => { if (e.key === "Escape") { const g = groupEl(src.id, { create: false }); if (g) renderGroupHead(g); } };
-    row.replaceChildren(input);
+    row.replaceChildren(icon("calendar"), input);
     input.focus();
   };
-  row.append(label, edit);
+  row.append(icon("calendar"), label, edit);
   return row;
 }
 
@@ -1146,46 +1283,48 @@ function imageTitle(note) {
 
 // Obrazki źródła: miniatura, typ, tekst odczytany z obrazka, uwagi, wyszukiwanie obrazem.
 function imagesEl(src) {
-  const wrap = document.createElement("div");
-  wrap.className = "src-images";
+  const wrap = h("div", "src-images");
   for (const [i, im] of src.images.entries()) {
     const note = (src.imageNotes || []).find((x) => x.index === i + 1) || {};
-    const card = document.createElement("div");
-    card.className = "img-card";
-    const img = Object.assign(document.createElement("img"), { src: im.thumb, alt: t("img.n", { n: i + 1 }), title: t("img.zoom") });
-    img.onclick = () => card.classList.toggle("big");
-    const body = document.createElement("div");
-    body.className = "img-body";
-    const title = document.createElement("div");
-    title.className = "img-title";
-    title.textContent = `🖼 ${t("img.n", { n: i + 1 })}${note.type ? ` · ${t(`imgtype.${note.type}`)}` : ""}`;
+    const card = h("div", "img-card");
+    const thumb = h("div", "fc-thumb");
+    const img = h("img");
+    img.src = im.thumb;
+    img.alt = t("img.n", { n: i + 1 });
+    img.title = t("img.zoom");
+    thumb.append(img);
+    thumb.onclick = () => card.classList.toggle("big");
+    const body = h("div", "img-body");
+    const title = h("div", "img-title fc-row");
+    title.append(icon("image"), h("span", "", `${t("img.n", { n: i + 1 })}${note.type ? ` · ${t(`imgtype.${note.type}`)}` : ""}`));
     body.append(title);
-    if (note.topic && src.images.length > 1) body.append(Object.assign(document.createElement("div"), { className: "img-topic", textContent: note.topic }));
-    if (note.text) {
-      const det = document.createElement("details");
-      det.append(Object.assign(document.createElement("summary"), { textContent: t("img.readText") }), Object.assign(document.createElement("div"), { className: "img-text", textContent: note.text }));
-      body.append(det);
-    }
-    if (note.notes) body.append(Object.assign(document.createElement("p"), { className: "img-notes", textContent: `${t("img.notes")}: ${note.notes}` }));
+    if (note.topic && src.images.length > 1) body.append(h("div", "img-topic", note.topic));
+    if (note.text) body.append(discEl(t("img.readText"), h("div", "img-text", note.text)));
+    if (note.notes) body.append(h("p", "img-notes", `${t("img.notes")}: ${note.notes}`));
     body.append(reverseSearchEl(im));
-    card.append(img, body);
+    card.append(thumb, body);
     wrap.append(card);
   }
   return wrap;
 }
 // Wyszukiwanie obrazem: gdzie i kiedy ten obraz pojawił się wcześniej (zdjęcia wyrwane z kontekstu).
 function reverseSearchEl(im) {
-  const row = document.createElement("div");
-  row.className = "img-search";
-  row.append(Object.assign(document.createElement("span"), { className: "muted", textContent: `${t("img.search")}:` }));
-  const link = (label, href) => Object.assign(document.createElement("a"), { textContent: label, href, target: "_blank", rel: "noopener noreferrer" });
+  const row = h("div", "img-search");
+  row.append(h("span", "fc-t-12 fc-faint", `${t("img.search")}:`));
+  const link = (label, href) => {
+    const a = h("a", "fc-btn fc-btn--secondary fc-btn--sm");
+    a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.append(h("span", "", label), icon("external-link"));
+    return a;
+  };
   if (/^https?:/.test(im.src || "")) {
     const u = encodeURIComponent(im.src);
     row.append(link("Google Lens", `https://lens.google.com/uploadbyurl?url=${u}`), link("TinEye", `https://tineye.com/search?url=${u}`),
       link("Yandex", `https://yandex.com/images/search?rpt=imageview&url=${u}`));
   } else {
     // wycinek nie ma adresu: kopiujemy obraz do schowka i otwieramy Google Lens (tam Ctrl+V)
-    const copy = Object.assign(document.createElement("button"), { type: "button", className: "img-copy", textContent: `📋 ${t("img.copy")}` });
+    const copy = fcBtn({ variant: "secondary", iconName: "copy", label: t("img.copy"), cls: "img-copy" });
+    const setLabel = (txt) => { copy.querySelector("span").textContent = txt; };
     copy.onclick = async () => {
       try {
         const bmp = await createImageBitmap(await (await fetch(im.thumb)).blob());
@@ -1193,8 +1332,8 @@ function reverseSearchEl(im) {
         c.getContext("2d").drawImage(bmp, 0, 0);
         const png = await c.convertToBlob({ type: "image/png" });
         await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
-        copy.textContent = `✓ ${t("img.copied")}`;
-      } catch (e) { copy.textContent = t("img.copyFailed"); console.warn(e); }
+        setLabel(t("img.copied"));
+      } catch (e) { setLabel(t("img.copyFailed")); console.warn(e); }
     };
     row.append(copy, link("Google Lens", "https://lens.google.com/"), link("TinEye", "https://tineye.com/"));
   }
@@ -1224,64 +1363,69 @@ function renderGroupNote(g) {
 }
 
 function cardEl(c) {
-  const v = VERDICTS[c.verdict];
+  const v = VERDICTS[c.verdict] || VERDICTS.brak_danych;
   const node = $("cardTpl").content.firstElementChild.cloneNode(true);
+  node.classList.add(vClass(c.verdict));
   node.dataset.tone = v.tone;
+  node.dataset.verdict = c.verdict;
   node.dataset.cid = c.id || "";
+  if (state.vFilter && c.verdict !== state.vFilter) node.classList.add("vhide");
   const pill = node.querySelector(".pill");
-  pill.textContent = verdictLabel(c.verdict);
+  pill.classList.add(vClass(c.verdict));
   pill.dataset.tone = v.tone;
-  node.querySelector(".conf").textContent = t("card.confidence", { c: t(`conf.${c.confidence}`) });
-  node.querySelector("time").textContent = hhmm(c.t);
-  const q = node.querySelector(".quote");
-  q.textContent = c.quote ? `${c.speaker ? c.speaker + ": " : ""}„${c.quote}”` : "";
-  q.hidden = !c.quote;
-  node.querySelector(".claim-label").textContent = t("card.claimLabel");
-  node.querySelector(".claim").textContent = c.claim;
-  node.querySelector(".expl-label").textContent = t("card.explLabel");
-  node.querySelector(".expl").textContent = c.explanation;
-  const dl = node.querySelector(".more");
-  if (c.image > 0) node.querySelector(".conf").textContent += ` · 🖼 ${t("img.fromImage", { n: c.image })}`;
+  pill.append(icon(vIcon(c.verdict)), h("span", "", verdictLabel(c.verdict)));
+  const conf = node.querySelector(".conf");
+  conf.dataset.level = String(CONF_LEVEL[c.confidence] || 2);
+  conf.setAttribute("aria-label", t("card.confidence", { c: t(`conf.${c.confidence}`) }));
+  conf.title = conf.getAttribute("aria-label");
+  const tags = node.querySelector(".head-tags");
   if (c.fromMemory) {
-    const mem = Object.assign(document.createElement("span"), { className: "mem-tag", textContent: `🧠 ${t("mem.tag")}`, title: t("mem.cardNote", { date: fmtDate(c.fromMemory) }) });
-    node.querySelector(".card-head time").before(mem);
+    const m = h("span", "fc-tag mem-tag");
+    m.append(icon("brain"), t("mem.tag"));
+    m.title = t("mem.cardNote", { date: fmtDate(c.fromMemory) });
+    tags.append(m);
   }
-  for (const [label, val] of [[t("card.visual"), c.visual_issues], [t("card.evidence"), c.evidence], [t("card.counter"), c.counter_evidence], [t("card.missing"), c.missing_data]]) {
-    if (!val) continue;
-    const dt = document.createElement("dt"); dt.textContent = label;
-    const dd = document.createElement("dd"); dd.textContent = val;
-    dl.append(dt, dd);
+  if (c.image > 0) {
+    const m = h("span", "fc-tag img-tag");
+    m.append(icon("image"), t("img.n", { n: c.image }));
+    m.title = t("img.fromImage", { n: c.image });
+    tags.append(m);
   }
-  const ul = node.querySelector(".sources");
-  for (const s of c.sources) {
-    const li = document.createElement("li");
-    const a = document.createElement("a");
-    a.href = s.url; a.target = "_blank"; a.rel = "noopener noreferrer";
-    a.textContent = s.title || new URL(s.url).hostname;
-    li.append(a);
-    const tier = sourceTier(s.url); // poziom źródła po domenie – bez modelu
-    if (tier) {
-      const b = Object.assign(document.createElement("span"), { className: "tier", textContent: t(`tier.${tier}`), title: t(`tierHint.${tier}`) });
-      b.dataset.tone = TIER_TONE[tier];
-      li.append(" ", b);
-    }
-    ul.append(li);
+  node.querySelector("time").textContent = hhmm(c.t);
+  node.querySelector(".claim").textContent = c.claim;
+  const q = node.querySelector(".quote");
+  if (c.quote) {
+    q.textContent = `„${c.quote}”`;
+    if (c.speaker) q.append(h("cite", "", `— ${c.speaker}`));
+  } else q.hidden = true;
+  node.querySelector(".expl").textContent = c.explanation;
+  const more = node.querySelector(".more");
+  for (const [label, val, tone, ic, open] of [[t("card.visual"), c.visual_issues, "fc-v-misleading", "image", true], [t("card.evidence"), c.evidence, "fc-v-true", "check", true],
+    [t("card.counter"), c.counter_evidence, "fc-v-false", "x", true], [t("card.missing"), c.missing_data, "fc-v-half", "circle-alert", true]]) {
+    if (val) more.append(discEl(label, val, { tone, iconName: ic, open }));
+  }
+  const srcs = c.sources || [];
+  if (srcs.length) {
+    node.querySelector(".src-list").hidden = false;
+    node.querySelector(".sources-label").textContent = t("card.sources", { n: srcs.length });
+    node.querySelector(".sources").append(...srcs.map(sourceItem));
   }
   const rn = node.querySelector(".recheck-note");
   const err = recheckErrors.get(c.id);
-  if (rechecking.has(c.id)) { rn.hidden = false; rn.classList.add("busy"); rn.textContent = t("rc.running"); }
-  else if (err) { rn.hidden = false; rn.classList.add("warn"); rn.textContent = `⚠ ${t("rc.failed", { msg: err })}`; }
+  const note = (cls, ic, text) => { rn.hidden = false; if (cls) rn.classList.add(...cls.split(" ")); rn.replaceChildren(icon(ic), h("span", "", text)); };
+  if (rechecking.has(c.id)) note("busy", "loader-circle", t("rc.running"));
+  else if (err) note("warn fc-v-warn", "triangle-alert", t("rc.failed", { msg: err }));
   else if (c.recheck) {
     const by = `${providerName(c.recheck.provider)} · ${c.recheck.model || "?"}`;
-    rn.hidden = false;
-    rn.textContent = `🔍 ${c.recheck.prev?.verdict && c.recheck.prev.verdict !== c.verdict
-      ? t("rc.noteChanged", { by, from: verdictLabel(c.recheck.prev.verdict) }) : t("rc.noteSame", { by })}`;
+    note("", "search-check", c.recheck.prev?.verdict && c.recheck.prev.verdict !== c.verdict
+      ? t("rc.noteChanged", { by, from: verdictLabel(c.recheck.prev.verdict) }) : t("rc.noteSame", { by }));
   }
+  if (rechecking.has(c.id)) rn.querySelector("svg")?.classList.add("fc-spin");
   const go = node.querySelector(".goto");
   const cSrc = findSource(c.srcId);
   if (isPageKind(cSrc?.kind) && (c.quote || c.image > 0 || cSrc.kind === "area") && c.inPage !== false) {
     go.hidden = false;
-    go.textContent = t("page.show");
+    go.querySelector(".goto-label").textContent = t("page.show");
     go.addEventListener("click", () => showInPage(c));
   }
   if (c.factchecks?.length) node.querySelector(".fc-box").replaceWith(factChecksEl(c));
@@ -1289,100 +1433,262 @@ function cardEl(c) {
   wireFold(node, c);
   return node;
 }
+// Źródło werdyktu: inicjał serwisu, tytuł, domena i poziom źródła (po adresie, bez modelu).
+function sourceItem(s) {
+  const li = h("li");
+  let host = "";
+  try { host = new URL(s.url).hostname.replace(/^www\./, ""); } catch { /* zły adres – pokazujemy sam tytuł */ }
+  const a = h("a", "fc-source");
+  a.href = s.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  a.title = s.title || s.url;
+  const fav = h("span", "fc-source__fav", ([...(host || s.title || "?")][0] || "?").toUpperCase());
+  fav.setAttribute("aria-hidden", "true");
+  const names = h("span", "fc-grow src-names");
+  names.append(h("span", "fc-source__name", s.title || host || s.url), h("span", "fc-source__domain", host));
+  a.append(fav, names);
+  const tier = sourceTier(s.url);
+  if (tier) {
+    const b = h("span", `fc-tier fc-tier--${TIER_UI[tier] || "media"} tier`, t(`tier.${tier}`));
+    b.title = t(`tierHint.${tier}`);
+    b.dataset.tone = TIER_TONE[tier];
+    a.append(b);
+  }
+  li.append(a);
+  return li;
+}
 // W źródle z oceną całości karta jest zwinięta do werdyktu i twierdzenia; klik rozwija szczegóły.
+// Karta: nagłówek (werdykt + twierdzenie) zawsze; szczegóły po kliknięciu. Domyślnie rozwinięta jest jedyna karta
+// źródła i najnowsza karta nagrania; resztę rozwijasz sam (albo „Rozwiń karty”).
+function cardOpen(c) {
+  if (openCards.has(c.id)) return true;
+  if (closedCards.has(c.id)) return false;
+  const mine = state.claims.filter((x) => x.srcId === c.srcId);
+  if (mine.length <= 1) return true;
+  const src = findSource(c.srcId);
+  return (src?.kind === "tab" || src?.kind === "mic") && mine.every((x) => (x.t || 0) <= (c.t || 0));
+}
 function wireFold(node, c) {
   const fold = node.querySelector(".fold");
   const paint = () => {
-    const open = openCards.has(c.id);
+    const open = cardOpen(c);
     node.classList.toggle("open", open);
+    node.dataset.open = String(open);
     fold.setAttribute("aria-expanded", String(open));
     fold.title = t(open ? "card.fold" : "card.unfold");
     fold.setAttribute("aria-label", fold.title);
   };
-  const toggle = () => { if (openCards.has(c.id)) openCards.delete(c.id); else openCards.add(c.id); paint(); };
+  const toggle = () => {
+    if (node.classList.contains("open")) { openCards.delete(c.id); closedCards.add(c.id); }
+    else { closedCards.delete(c.id); openCards.add(c.id); }
+    paint();
+  };
   fold.onclick = (e) => { e.stopPropagation(); toggle(); };
-  node.addEventListener("click", (e) => {
-    const g = node.closest(".src-group");
-    if (!g?.classList.contains("summarised") || g.classList.contains("open-all") || node.classList.contains("open")) return;
-    if (e.target.closest("a, button, textarea, input")) return;
+  node.querySelector(".card-head").addEventListener("click", (e) => {
+    if (e.target.closest("a, button, textarea, input, select")) return;
     toggle();
   });
+  node._paint = paint;
   paint();
 }
 
 // Co o tym twierdzeniu napisały redakcje fact-checkingowe (Google Fact Check Tools).
 function factChecksEl(c) {
-  const box = document.createElement("div");
-  box.className = "fc-box";
-  box.append(Object.assign(document.createElement("div"), { className: "fc-title", textContent: `📚 ${t("fc.title")}` }));
-  const ul = document.createElement("ul");
+  const box = h("div", "fc-box");
+  box.append(h("span", "fc-label fc-title", t("fc.title")));
   for (const f of c.factchecks) {
-    const li = document.createElement("li");
-    const rating = Object.assign(document.createElement("span"), { className: "pill", textContent: f.rating || "?" });
-    rating.dataset.tone = ratingTone(f.rating);
-    const a = Object.assign(document.createElement("a"), { href: f.url, target: "_blank", rel: "noopener noreferrer", textContent: f.title || f.claim || f.url });
-    li.append(rating, ` ${f.publisher}${f.date ? ` · ${f.date.slice(0, 10)}` : ""}: `, a);
-    ul.append(li);
+    const a = h("a", "fc-note fact");
+    a.href = f.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    const tone = ratingTone(f.rating);
+    const rating = h("span", `fc-pill pill ${TONE_CLASS[tone] || "fc-v-nodata"}`, f.rating || "?");
+    rating.dataset.tone = tone;
+    const txt = h("span");
+    txt.append(h("strong", "", f.publisher || ""), `${f.date ? ` · ${f.date.slice(0, 10)}` : ""}: ${f.title || f.claim || f.url}`);
+    a.append(icon("file-search"), rating, txt, icon("external-link"));
+    box.append(a);
   }
-  box.append(ul);
-  if (c.fcConflict) box.append(Object.assign(document.createElement("p"), { className: "fc-conflict", textContent: `⚠ ${t("fc.conflict")}` }));
+  if (c.fcConflict) {
+    const p = h("p", "fc-note fc-v-warn fc-conflict");
+    p.append(icon("triangle-alert"), h("span", "", t("fc.conflict")));
+    box.append(p);
+  }
   return box;
 }
 
 // Stopka karty: ocena werdyktu (👍/👎 + komentarz) i „Kopiuj jako odpowiedź”.
+// Stopka karty: „Sprawdź dokładniej” (z opcjonalną uwagą i wyborem innego dostawcy) i „Kopiuj jako odpowiedź”.
 function wireCardFoot(node, c) {
-  const up = node.querySelector(".fb-up"), down = node.querySelector(".fb-down"), copy = node.querySelector(".copy-reply");
-  const box = node.querySelector(".fb-box"), ta = box.querySelector("textarea"), note = node.querySelector(".fb-note");
-  up.title = t("fb.up"); up.setAttribute("aria-label", t("fb.up"));
-  down.title = t("fb.down"); down.setAttribute("aria-label", t("fb.down"));
-  copy.textContent = `📋 ${t("reply.copy")}`;
+  const open = node.querySelector(".recheck-open"), copy = node.querySelector(".copy-reply");
+  const box = node.querySelector(".rc-box"), ta = box.querySelector("textarea");
+  const rb = box.querySelector(".recheck"), by = box.querySelector(".recheck-by"), sel = by.querySelector("select");
+  open.querySelector(".recheck-open-label").textContent = t("rc.button");
+  open.title = t("rc.hint");
+  open.disabled = rechecking.has(c.id);
+  copy.querySelector(".copy-label").textContent = t("reply.copy");
   copy.title = t("reply.copyHint");
-  box.querySelector(".fb-done").textContent = t("fb.done");
-  const paint = () => {
-    const r = c.feedback?.rating || 0;
-    up.classList.toggle("on", r > 0); up.setAttribute("aria-pressed", String(r > 0));
-    down.classList.toggle("on", r < 0); down.setAttribute("aria-pressed", String(r < 0));
-    note.hidden = !box.hidden || !c.feedback?.comment;
-    note.textContent = c.feedback?.comment ? `💬 ${c.feedback.comment}` : "";
-  };
-  const rate = (r) => {
-    if (c.feedback?.rating === r) { delete c.feedback; box.hidden = true; } // drugie kliknięcie cofa ocenę
-    else {
-      c.feedback = { rating: r, comment: c.feedback?.comment || "", at: Date.now() };
-      ta.value = c.feedback.comment;
-      ta.placeholder = t(r > 0 ? "fb.placeholderUp" : "fb.placeholderDown");
-      box.hidden = false;
-      if (r < 0) ta.focus();
-    }
-    paint();
-    touchSession();
-  };
-  up.onclick = () => rate(1);
-  down.onclick = () => rate(-1);
-  ta.oninput = () => { if (c.feedback) { c.feedback.comment = ta.value.slice(0, 1000); touchSession(); } };
-  ta.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); box.querySelector(".fb-done").click(); } };
-  box.querySelector(".fb-done").onclick = () => { box.hidden = true; paint(); setStatus(t("fb.saved")); };
-  note.onclick = () => { box.hidden = false; ta.value = c.feedback?.comment || ""; paint(); ta.focus(); };
-  copy.onclick = () => openReply([c], findSource(c.srcId));
-  // 👎 → „Sprawdź dokładniej” (ten sam albo inny skonfigurowany dostawca)
-  const more = box.querySelector(".fb-more"), rb = more.querySelector(".recheck"), by = more.querySelector(".recheck-by"), sel = by.querySelector("select");
-  rb.textContent = `🔍 ${t("rc.button")}`;
-  rb.title = t("rc.hint");
+  box.querySelector(".rc-label").textContent = t("rc.noteLabel");
+  ta.placeholder = t("rc.placeholder");
+  box.querySelector(".rc-cancel").textContent = t("set.cancel");
+  rb.querySelector(".recheck-label").textContent = t("rc.start");
   by.querySelector("span").textContent = t("rc.by");
   const alts = recheckProviders();
   by.hidden = alts.length < 2;
   sel.replaceChildren(...alts.map((a) => new Option(a.label, a.provider)));
-  rb.onclick = () => {
-    if (c.feedback) c.feedback.comment = ta.value.slice(0, 1000);
-    box.hidden = true;
-    paint();
-    recheckClaim(c, sel.value || S.provider);
+  const show = (on) => {
+    box.hidden = !on;
+    open.setAttribute("aria-expanded", String(on));
+    if (on) ta.focus();
   };
-  const paintMore = () => { more.hidden = !(c.feedback?.rating < 0); rb.disabled = rechecking.has(c.id); };
-  up.addEventListener("click", paintMore);
-  down.addEventListener("click", paintMore);
-  paint();
-  paintMore();
+  open.onclick = () => show(box.hidden);
+  box.querySelector(".rc-cancel").onclick = () => show(false);
+  ta.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); rb.click(); } };
+  rb.onclick = () => {
+    const note = ta.value.trim().slice(0, 1000);
+    show(false);
+    recheckClaim(c, sel.value || S.provider, note);
+  };
+  copy.onclick = () => openReply([c], findSource(c.srcId));
+}
+
+// ---------- wynik pod postem (przycisk „Sprawdź fakty” na X / Facebooku) ----------
+// Ramka z oceną całości, twierdzeniami, opinią i źródłami trafia pod post, z którego przyszło zlecenie.
+// Panel buduje ją tymi samymi klasami co siebie (fc-tokens.css + fc-components.css w Shadow DOM strony);
+// treść ze stron i od modelu jest wstawiana jako tekst, więc gotowy HTML nie niesie skryptów.
+let injectCss = null;
+const injectSent = new Map(); // srcId → podpis ostatnio wysłanego wyniku (wysyłamy tylko zmiany)
+const INJECT_EXTRA_CSS = `
+:host { display: block; }
+.fc-inject { margin: 0; font-family: var(--fc-font); font-size: var(--fc-fs-14); line-height: var(--fc-lh-14); max-width: 640px; }
+.fc-inject p { margin: 0; }
+.fc-inject a { color: var(--fc-accent-text); }
+.fc-inject svg { width: 16px; height: 16px; flex-shrink: 0; }
+.fc-inject .fc-pill svg { width: 13px; height: 13px; }
+.fc-inject .fc-logo { width: 22px; height: 22px; border-radius: 6px; }
+.fc-inject .fc-logo svg { width: 13px; height: 13px; }
+.fc-inject .fc-btn--icon { width: 26px; height: 26px; min-height: 26px; }
+.fc-inject .fc-btn--icon svg, .fc-inject .fc-btn--sm svg { width: 14px; height: 14px; }
+.fc-inject .inj-level { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.fc-inject .inj-level i { width: 10px; height: 10px; border-radius: 3px; background: var(--oc, var(--fc-o-off)); }
+.fc-inject .fc-label svg { width: 13px; height: 13px; }
+.fc-inject .inj-src a { overflow-wrap: anywhere; }
+.fc-inject .fc-scam { padding: 10px 12px; }
+.fc-inject .scam-advice { background: var(--fc-surface); }
+.fc-inject .fc-scam .fc-row { margin-top: 8px; }
+`;
+// Style ramki = te same arkusze co panel (już wczytane – bez ponownego pobierania plików).
+async function injectStyles() {
+  if (!injectCss) {
+    const sheets = [...document.styleSheets].filter((x) => /\/fc-(tokens|components)\.css$/.test(x.href || ""));
+    injectCss = `${sheets.map((x) => [...x.cssRules].map((r) => r.cssText).join("\n")).join("\n")}\n${INJECT_EXTRA_CSS}`;
+  }
+  return injectCss;
+}
+function injectFrameEl(src, claims, s) {
+  const box = h("div", "fc fc-inject");
+  box.setAttribute("role", "region");
+  box.setAttribute("aria-label", t("inj.region"));
+  const head = h("div", "fc-inject__head");
+  const logo = h("span", "fc-logo");
+  logo.append(icon("check"));
+  head.append(logo, h("span", "fc-t-13 fc-strong fc-grow", "Fact Checker"));
+  if (s?.genre && s.genre !== "inne") head.append(h("span", "fc-tag", t(`genre.${s.genre}`)));
+  const close = fcBtn({ variant: "icon", iconName: "x", label: t("inj.close") });
+  close.dataset.act = "close";
+  head.append(close);
+  const body = h("div", "fc-inject__body");
+  if (src.scam?.level === "high" && S.scamCheck !== false) {
+    const sc = scamEl(src.scam);
+    sc.querySelector(".fc-row button")?.remove(); // „Dlaczego?” – tylko w panelu
+    sc.querySelector(".scam-note")?.remove();
+    body.append(sc);
+  }
+  if (s) {
+    const pos = LEVELS.indexOf(s.level);
+    const lv = h("div", `fc-t-16 fc-strong inj-level${pos >= 0 ? ` fc-o-${pos + 1}` : ""}`);
+    lv.append(h("i"), h("span", "", t(`level.${s.level}`)));
+    const meter = h("div", "fc-meter");
+    meter.setAttribute("role", "img");
+    meter.setAttribute("aria-label", t(`level.${s.level}`));
+    meter.append(...LEVELS.map((_, i) => h("span", `fc-meter__seg fc-o-${i + 1}${i === pos ? " is-on is-active" : ""}`)));
+    const labels = h("div", "fc-meter__labels");
+    labels.append(h("span", "", t(`level.${LEVELS[0]}`)), h("span", "", t(`level.${LEVELS.at(-1)}`)));
+    const wrap = h("div");
+    wrap.append(lv, meter, labels);
+    body.append(wrap);
+  }
+  const sorted = [...claims].sort((a, b) => severityRank(a.verdict) - severityRank(b.verdict));
+  for (const c of sorted.slice(0, 4)) {
+    const row = h("div", `fc-inject__claim ${vClass(c.verdict)}`);
+    const st = h("div", "fc-stack fc-grow");
+    st.style.gap = "4px";
+    const r1 = h("div", "fc-row");
+    const conf = h("span", "fc-conf");
+    conf.dataset.level = String(CONF_LEVEL[c.confidence] || 2);
+    conf.setAttribute("role", "img");
+    conf.setAttribute("aria-label", t("card.confidence", { c: t(`conf.${c.confidence}`) }));
+    conf.append(h("i"), h("i"), h("i"));
+    r1.append(verdictPill(c.verdict), conf);
+    st.append(r1, h("span", "fc-t-13 fc-strong", c.claim), h("span", "fc-t-13 fc-muted", c.explanation));
+    row.append(st);
+    body.append(row);
+  }
+  if (claims.length > 4) body.append(h("p", "fc-t-12 fc-faint", t("inj.more", { n: claims.length - 4 })));
+  if (!claims.length) body.append(h("p", "fc-t-13 fc-muted", t("src.noClaims")));
+  if (s?.headline) {
+    const op = h("div", "fc-inject__opinion");
+    const lab = h("div", "fc-label");
+    lab.append(icon("sparkles"), t("inj.opinion"));
+    op.append(lab, h("p", "fc-t-13", s.headline));
+    body.append(op);
+  }
+  const hosts = new Map(); // do 3 źródeł z różnych serwisów, od najważniejszych werdyktów
+  for (const c of sorted) for (const x of c.sources || []) {
+    let host = "";
+    try { host = new URL(x.url).hostname.replace(/^www\./, ""); } catch { continue; }
+    if (!hosts.has(host) && hosts.size < 3) hosts.set(host, x);
+  }
+  if (hosts.size) {
+    const row = h("div", "fc-row inj-src");
+    row.style.gap = "6px";
+    row.append(h("span", "fc-t-12 fc-faint", t("inj.sources")));
+    for (const [host, x] of hosts) {
+      const a = h("a", "fc-link fc-t-12", host);
+      a.href = x.url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.title = x.title || x.url;
+      row.append(a);
+    }
+    body.append(row);
+  }
+  const btns = h("div", "fc-row");
+  btns.style.gap = "6px";
+  if (claims.length) {
+    const rp = fcBtn({ variant: "soft", iconName: "copy", label: t("reply.copy") });
+    rp.dataset.act = "reply";
+    btns.append(rp);
+  }
+  const more = fcBtn({ variant: "ghost", iconName: "panel-right", label: t("inj.details") });
+  more.dataset.act = "panel";
+  btns.append(more);
+  body.append(btns);
+  box.append(head, body);
+  return box;
+}
+function injectUpdate(src) {
+  if (src?.via !== "button" || src.tabId == null || !src.captureId) return;
+  if (activity.on && activity.srcId === src.id) return; // jeszcze sprawdzamy
+  const claims = state.claims.filter((c) => c.srcId === src.id);
+  const st = summaryState(src, claims);
+  if (st?.status === "pending") return; // ocena całości w drodze
+  const sig = `${getLang()}|${summaryKey(claims)}|${src.summary?.at || ""}|${src.scam?.level || ""}|${claims.length}`;
+  if (injectSent.get(src.id) === sig) return;
+  injectSent.set(src.id, sig);
+  const html = injectFrameEl(src, claims, st?.status === "ready" ? st.s : null).outerHTML;
+  injectStyles()
+    .then((css) => runInTab(src.tabId, "injectResult", { captureId: src.captureId, html, css }, { frameId: src.frameId || 0 }))
+    .catch((e) => console.warn(e));
+}
+// Post z przycisku nie zostanie sprawdzony (anulowany podgląd, duplikat, błąd) – przycisk wraca do „Sprawdź fakty”.
+function injectReset(p) {
+  if (p?.via !== "button" || p.tabId == null || !p.captureId) return;
+  runInTab(p.tabId, "injectResult", { captureId: p.captureId, reset: true }, { frameId: p.frameId || 0 }).catch(() => {});
 }
 
 // ---------- „Sprawdź dokładniej” ----------
@@ -1402,7 +1708,7 @@ function repaintCard(c) {
 }
 const CLAIM_FIELDS = ["claim", "verdict", "confidence", "explanation", "evidence", "counter_evidence", "missing_data", "sources",
   "visual_issues", "keywords", "category", "provider", "model", "mode"];
-async function recheckClaim(c, provider = S.provider) {
+async function recheckClaim(c, provider = S.provider, note = "") {
   if (rechecking.has(c.id)) return;
   if (limitReached()) { showLimitBanner(); return; }
   const src = findSource(c.srcId);
@@ -1421,7 +1727,7 @@ async function recheckClaim(c, provider = S.provider) {
     for (let attempt = 0; ; attempt++) {
       const body = buildRecheckRequest({
         model: who.model, today: new Date().toISOString().slice(0, 10), webSearch, structured, outLang: getLang(),
-        claim: c, src: view, note: c.feedback?.comment || "", maxSearches: modeOf("thorough").searches,
+        claim: c, src: view, note, maxSearches: modeOf("thorough").searches,
       });
       try {
         res = await callModel({ provider, key: await getToken(provider), body, timeoutMs: 240_000, idleMs: 120_000 });
@@ -1442,7 +1748,7 @@ async function recheckClaim(c, provider = S.provider) {
       claim: r.claim || c.claim, verdict: r.verdict, confidence: r.confidence, explanation: r.explanation, evidence: r.evidence,
       counter_evidence: r.counter_evidence, missing_data: r.missing_data, sources: r.sources, keywords: r.keywords || c.keywords,
       category: r.category || c.category, provider: who.provider, model: who.model, mode: "thorough",
-      recheck: { at: Date.now(), prev, provider: who.provider, model: who.model, note: c.feedback?.comment || "" },
+      recheck: { at: Date.now(), prev, provider: who.provider, model: who.model, note },
     });
     if (r.visual_issues) c.visual_issues = r.visual_issues;
     if (c.factchecks?.length) c.fcConflict = conflicts(VERDICTS[c.verdict]?.tone, c.factchecks);
@@ -1497,6 +1803,12 @@ function renderFeed() {
 const rerenderCards = renderFeed;
 
 // Przełącznik źródła dźwięku: zablokowany w trakcie nagrywania (zmiana działa dopiero po ponownym Start).
+function setToggle(running) {
+  const b = $("toggle");
+  b.classList.toggle("stop", running);
+  b.querySelector("svg")?.replaceWith(icon(running ? "square" : "play"));
+  $("toggleLabel").textContent = t(running ? "btn.stop" : "btn.start");
+}
 function lockSource(on) {
   $("srcSeg").classList.toggle("locked", on);
   $("srcSeg").title = on ? t("src.locked") : "";
@@ -1594,6 +1906,9 @@ function renderActivity() {
   const listening = state.running && !activity.on;
   el.hidden = !activity.on && !state.running;
   el.classList.toggle("listening", listening);
+  el.classList.toggle("fc-activity--live", listening);
+  $("actCancel").hidden = !activity.on;
+  $("actStop").hidden = !state.running;
   const queued = state.queue?.length ? ` · ${t("queue.short", { n: state.queue.length })}` : "";
   if (activity.on) {
     $("actText").textContent = stageLabel() + queued;
@@ -1611,12 +1926,10 @@ function renderActivity() {
   if (!need && activityTick) { clearInterval(activityTick); activityTick = null; }
 }
 function skeletonEl() {
-  const node = document.createElement("article");
-  node.className = "card skeleton";
-  const label = document.createElement("div");
-  label.className = "sk-label";
-  label.append(Object.assign(document.createElement("span"), { className: "spinner" }), Object.assign(document.createElement("span"), { textContent: stageLabel() }));
-  node.append(label, ...[1, 2, 3].map(() => Object.assign(document.createElement("div"), { className: "sk-line" })));
+  const node = h("article", "card skeleton fc-vcard open");
+  const label = h("div", "sk-label");
+  label.append(icon("loader-circle", { cls: "fc-spin" }), h("span", "", stageLabel()));
+  node.append(label, ...[1, 2, 3].map(() => h("div", "sk-line fc-skel")));
   return node;
 }
 // Znaczek na ikonie wtyczki – widać pracę także, gdy panel jest schowany.
@@ -1673,18 +1986,11 @@ function renderQueue() {
   box.hidden = !state.queue.length;
   $("qTitle").textContent = t("queue.title", { n: state.queue.length });
   $("qList").replaceChildren(...state.queue.map((q) => {
-    const li = document.createElement("li");
-    const label = document.createElement("span");
-    label.textContent = `${sourceIcon({ kind: q.kind })} ${captureTitle(q)}`;
+    const li = h("li");
+    const label = h("span", "", captureTitle(q));
     label.title = q.meta?.url || "";
-    const del = document.createElement("button");
-    del.type = "button";
-    del.className = "icon q-del";
-    del.textContent = "✕";
-    del.title = t("queue.remove");
-    del.setAttribute("aria-label", t("queue.remove"));
-    del.onclick = () => { state.queue = state.queue.filter((x) => x !== q); renderQueue(); renderActivity(); };
-    li.append(label, del);
+    li.append(icon(kindIcon(q.kind)), label, fcBtn({ variant: "icon", iconName: "x", label: t("queue.remove"), cls: "q-del",
+      onClick: () => { state.queue = state.queue.filter((x) => x !== q); injectReset(q); renderQueue(); renderActivity(); } }));
     return li;
   }));
 }
@@ -1753,9 +2059,16 @@ function renderSpeakerBar() {
   bar.hidden = !state.running;
   if (bar.hidden) return;
   const chip = (label, value) => {
-    const b = Object.assign(document.createElement("button"), { type: "button", className: "chip", textContent: label });
-    b.classList.toggle("on", state.speaker === value);
-    b.setAttribute("aria-pressed", String(state.speaker === value));
+    const b = h("button", "fc-chip chip");
+    b.type = "button";
+    const on = state.speaker === value;
+    const av = h("span", "fc-chip__av", value ? initials(value) : "");
+    if (!value) av.append(icon("sparkles"));
+    b.append(av, h("span", "", label));
+    if (on && value) { const w = h("span", "fc-chip__wave"); w.setAttribute("aria-hidden", "true"); w.append(h("i"), h("i"), h("i")); b.append(w); }
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", String(on));
+    if (!value) b.title = t("spk.hint");
     b.onclick = () => setSpeaker(value);
     return b;
   };
@@ -1794,15 +2107,18 @@ async function recordUsageNow(usage, who = {}) {
 function renderCost() {
   const el = $("costLine");
   const u = { ...emptyUsage(), ...(session.usage || {}) };
-  if (!u.calls) { el.hidden = true; return; }
+  if (!u.calls) { el.hidden = true; $("summary").hidden = !state.claims.length; return; }
   const lang = getLang();
   const plan = S.provider === "chatgpt" && !u.cost;
-  el.textContent = plan
+  el.replaceChildren(icon(plan ? "coins" : "wallet"), h("span", "", plan
     ? t("cost.plan", { tokens: fmtTokens(u.input + u.output, lang) })
-    : t("cost.line", { session: fmtUsd(u.cost, lang), today: fmtUsd(dayUsage.cost, lang) }) + (S.dailyLimit > 0 ? ` ${t("cost.limit", { limit: fmtUsd(S.dailyLimit, lang) })}` : "");
+    : t("cost.line", { session: fmtUsd(u.cost, lang), today: fmtUsd(dayUsage.cost, lang) }) + (S.dailyLimit > 0 ? ` ${t("cost.limit", { limit: fmtUsd(S.dailyLimit, lang) })}` : "")));
   el.title = t("cost.title", { calls: u.calls, input: fmtTokens(u.input, lang), output: fmtTokens(u.output, lang), searches: u.searches }) + (u.unknown ? ` ${t("cost.unknown")}` : "");
-  el.classList.toggle("over", !plan && S.dailyLimit > 0 && dayUsage.cost >= S.dailyLimit);
+  const over = !plan && S.dailyLimit > 0 && dayUsage.cost >= S.dailyLimit;
+  el.classList.toggle("over", over);
+  el.classList.toggle("fc-cost--over", over);
   el.hidden = false;
+  $("summary").hidden = !state.claims.length && el.hidden;
 }
 const limitReached = () => S.dailyLimit > 0 && S.provider !== "chatgpt" && dayUsage.day === localDay() && dayUsage.cost >= S.dailyLimit && state.limitOkDay !== localDay();
 function showLimitBanner() {
@@ -1826,6 +2142,12 @@ async function renderCostSettings() {
   await loadDayUsage();
   const lang = getLang();
   $("costToday").textContent = t("cost.today", { cost: fmtUsd(dayUsage.cost, lang), calls: dayUsage.calls, tokens: fmtTokens(dayUsage.input + dayUsage.output, lang) });
+  const lim = Number(String($("dailyLimit").value).replace(",", ".")) || 0; // wykorzystanie dziennego limitu
+  $("limitBar").hidden = !(lim > 0);
+  if (lim > 0) {
+    $("limitBar").firstElementChild.style.width = `${Math.min(100, Math.round((100 * dayUsage.cost) / lim))}%`;
+    $("limitBar").classList.toggle("over", dayUsage.cost >= lim);
+  }
   const prov = formProvider();
   const pr = priceFor(prov, $("model").value, { in: $("priceIn").value, out: $("priceOut").value });
   $("priceHint").textContent = prov === "chatgpt" ? t("cost.planHint")
@@ -1996,7 +2318,6 @@ const reply = { claims: [], src: null, key: "", tone: "plain" };
 // gotowy tekst trafia do pamięci werdyktu i czeka (każdy ton pisze się najwyżej raz).
 const replyJobs = new Map();
 const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
-const isXSite = (src) => /(^|\.)(x|twitter)\.com$/.test(hostOf(src?.url || src?.meta?.url || ""));
 function replyCache() {
   if (reply.claims.length === 1) return (reply.claims[0].replies ??= {});
   if (!reply.src) return {};
@@ -2020,24 +2341,24 @@ function replyLang(post) {
 function openReply(claims, src) {
   if (!claims.length) return;
   Object.assign(reply, { claims, src, key: claims.map((c) => c.id).join(",") });
-  const pref = REPLY_TABS.includes(S.replyTone) ? S.replyTone : "plain";
   $("rpFor").textContent = claims.length > 1
     ? t("rp.forAll", { n: claims.length, title: sourceTitle(src || {}) })
     : t("rp.forOne", { claim: claims[0].claim });
-  $("rpCopy").textContent = t("rp.copy");
+  $("rpCopyLabel").textContent = t("rp.copy");
   $("replyDlg").showModal();
-  showTone(isXSite(src) && pref !== "orig" ? "x" : pref);
+  showTone("orig"); // oryginał werdyktu od razu, bez zapytania do modelu; inny ton – dopiero po wybraniu
 }
 // Zakładki: rzeczowo / na luzie / krótko pod X (pisze model) i oryginał (tekst werdyktu bez przeróbek).
 function showTone(tone, { regen = false } = {}) {
   reply.tone = tone;
   document.querySelector(`input[name=tone][value=${tone}]`).checked = true;
-  $("rpRegen").textContent = t(tone === "orig" ? "rp.restore" : "rp.regen");
+  $("rpRegenLabel").textContent = t(tone === "orig" ? "rp.restore" : "rp.regen");
   renderToneTabs();
   if (tone === "orig") {
     if (regen) delete replyCache().orig; // „Przywróć oryginał”
     replyBusy(false);
-    setReplyText(replyCache().orig?.text ?? originalReply(reply.claims), "", t("rp.origNote"));
+    const summary = reply.claims.length > 1 ? validSummary(reply.src, reply.claims) : null;
+    setReplyText(replyCache().orig?.text ?? originalReply(reply.claims, { summary }), "", t("rp.origNote"));
     return;
   }
   const running = replyJobs.has(`${reply.key}|${tone}`);
@@ -2120,9 +2441,10 @@ function replyCount() {
     const n = xLength(v);
     el.textContent = t("rp.countX", { n, max: X_LIMIT });
     el.classList.toggle("over", n > X_LIMIT);
+    el.classList.toggle("fc-counter--over", n > X_LIMIT);
   } else {
     el.textContent = t("rp.count", { n: [...v].length });
-    el.classList.remove("over");
+    el.classList.remove("over", "fc-counter--over");
   }
 }
 async function copyText(text) {
@@ -2282,7 +2604,7 @@ async function runCheck({ force = false, manualText = null, manual = false } = {
     saveSessionNow();
     if (state.rerun) { state.rerun = false; setTimeout(() => runCheck({ force: true, manual: true }), 0); }
     else runQueued();
-    if (!state.running) $("liveDot").className = "dot";
+    if (!state.running) $("liveDot").className = "fc-dot";
   }
 }
 
@@ -2415,9 +2737,8 @@ async function start() {
   renderActivity();
   renderSpeakerBar();
   $("lastSession").hidden = true;
-  $("toggle").textContent = t("btn.stop");
-  $("toggle").classList.add("stop");
-  $("liveDot").className = "dot live";
+  setToggle(true);
+  $("liveDot").className = "fc-dot fc-dot--live";
   state.timer = setInterval(() => runCheck(), S.intervalSec * 1000);
 }
 
@@ -2429,9 +2750,8 @@ async function stop() {
   state.transcriber?.stop();
   state.transcriber = null;
   $("interim").textContent = "";
-  $("toggle").textContent = t("btn.start");
-  $("toggle").classList.remove("stop");
-  $("liveDot").className = "dot";
+  setToggle(false);
+  $("liveDot").className = "fc-dot";
   if (!activity.on) setBadge("");
   renderActivity();
   const g = state.audioSrcId && groupEl(state.audioSrcId, { create: false });
@@ -2478,6 +2798,7 @@ function showAccessError(e, retry) {
   if (!(e instanceof PageAccessError)) { handleError(e); return; }
   if (e.code === "restricted") { banner(esc(t("page.restricted")), "error"); return; }
   if (e.code === "noArticle") { banner(esc(t("page.noArticle"))); return; }
+  if (e.code === "postGone") { banner(esc(t("page.postGone"))); return; }
   if (e.code === "noAccess") {
     const pattern = /^https?:/.test(e.url) ? `${e.origin}/*` : null;
     banner(esc(t("page.noAccess", { host: e.host || e.url })) + (pattern ? ` <a href="#" data-grant>${esc(t("page.grant", { host: e.host }))}</a>` : ""), "error");
@@ -2521,6 +2842,7 @@ async function intakeOne(p) {
   if (!p.text?.trim() && !p.images?.length) {
     if (!state.busy) setStatus(t("app.ready"));
     if (!p.imageError) banner(esc(t(p.imageCount ? "img.offscreen" : "page.noText")));
+    injectReset(p);
     return;
   }
   let text = (p.text || "").trim();
@@ -2528,6 +2850,7 @@ async function intakeOne(p) {
   if (state.queue.some((q) => q.key === captureKey(p, text)) || state.currentKey === captureKey(p, text)) {
     setStatus(t("queue.dup"));
     pageToast(p, `Fact Checker: ${t("queue.dup")}`);
+    injectReset(p);
     return;
   }
   // Pamięć werdyktów – PRZED podglądem: to, co już sprawdzone, nigdzie nie idzie, więc nie ma czego potwierdzać.
@@ -2553,7 +2876,7 @@ async function intakeOne(p) {
   // Podgląd: przy obrazkach zawsze (miniatury), przy tekście – gdy jest długi albo skrócony.
   if (p.kind !== "manual" && !p.skipPreview && (images.length || text.length > PREVIEW_CHARS || p.truncated)) {
     const ok = await showPreview(p, { knownImages });
-    if (!ok) return;
+    if (!ok) { injectReset(p); return; }
     const changed = ok.text !== text || ok.kept.length !== images.length;
     ({ text, images } = ok);
     if (!text && !images.length) return;
@@ -2588,12 +2911,26 @@ function showPreview(p, { knownImages = null } = {}) {
     const keep = new Set((p.images || []).map((_, i) => i));
     const box = $("pvImages");
     box.hidden = !p.images?.length;
+    $("pvImagesLabel").hidden = box.hidden;
     box.replaceChildren(...(p.images || []).map((im, i) => {
-      const fig = document.createElement("figure");
-      const img = Object.assign(document.createElement("img"), { src: im.thumb, alt: t("img.n", { n: i + 1 }) });
-      const x = Object.assign(document.createElement("button"), { type: "button", className: "pv-x", textContent: "✕", title: t("pv.dropImage") });
-      x.onclick = () => { if (keep.has(i)) keep.delete(i); else keep.add(i); fig.classList.toggle("dropped", !keep.has(i)); update(); };
-      fig.append(img, Object.assign(document.createElement("figcaption"), { textContent: `🖼 ${i + 1} · ${im.w}×${im.h}` }), x);
+      const fig = h("figure", "fc-thumb");
+      const img = h("img");
+      img.src = im.thumb;
+      img.alt = t("img.n", { n: i + 1 });
+      const x = h("button", "fc-switch pv-x");
+      x.type = "button";
+      x.setAttribute("role", "switch");
+      x.setAttribute("aria-checked", "true");
+      x.title = t("pv.dropImage");
+      x.setAttribute("aria-label", t("img.n", { n: i + 1 }));
+      x.onclick = () => {
+        if (keep.has(i)) keep.delete(i); else keep.add(i);
+        fig.classList.toggle("dropped", !keep.has(i));
+        fig.classList.toggle("is-off", !keep.has(i));
+        x.setAttribute("aria-checked", String(keep.has(i)));
+        update();
+      };
+      fig.append(img, h("figcaption", "", `${i + 1} · ${im.w}×${im.h}`), x);
       return fig;
     }));
     const update = () => {
@@ -2634,6 +2971,7 @@ function sourceFields(p, text) {
     tabId: p.tabId ?? null,
     frameId: p.frameId || 0,
     captureId: p.captureId || null,
+    ...(p.via ? { via: p.via } : {}),
     text,
     // miniatury (bez pełnych zrzutów – te idą tylko do modelu); el = nr obrazka na stronie (ramki)
     images: (p.images || []).map(({ thumb, w, h, src, el }) => ({ thumb, w, h, src, el })),
@@ -2751,7 +3089,7 @@ async function checkPage(p) {
     actStop(n);
     pageBusy(src, { on: false, done });
     saveSessionNow(); // od razu – panel może zaraz zostać zamknięty
-    if (!state.running) $("liveDot").className = "dot";
+    if (!state.running) $("liveDot").className = "fc-dot";
     runQueued();
   }
 }
@@ -2921,7 +3259,7 @@ $("manualCheck").addEventListener("click", () => {
   $("manualText").value = "";
   handleCapture({ kind: "manual", text, meta: {} });
 });
-$("qClear").addEventListener("click", (e) => { e.preventDefault(); state.queue = []; renderQueue(); renderActivity(); });
+$("qClear").addEventListener("click", (e) => { e.preventDefault(); state.queue.forEach(injectReset); state.queue = []; renderQueue(); renderActivity(); });
 $("exportMd").addEventListener("click", exportMarkdown);
 $("clear").addEventListener("click", async () => {
   banner(null);
@@ -2945,9 +3283,8 @@ $("rpText").addEventListener("input", () => {
 });
 $("rpCopy").addEventListener("click", async () => {
   const ok = await copyText($("rpText").value);
-  $("rpCopy").textContent = ok ? `✓ ${t("reply.copied")}` : t("reply.failed");
+  $("rpCopyLabel").textContent = ok ? t("reply.copied") : t("reply.failed");
   if (!ok) return;
-  if (reply.tone !== "x" && S.replyTone !== reply.tone) { S.replyTone = reply.tone; saveSettings(); }
   setStatus(t("rp.copied"));
   setTimeout(() => $("replyDlg").close(), 700);
 });
@@ -2958,6 +3295,11 @@ $("onlyProblems").addEventListener("click", async () => {
   await saveSettings();
   renderFeed();
 });
+$("spkAdd").addEventListener("click", () => { if ($("spkInput").value.trim()) setSpeaker($("spkInput").value); });
+$("actStop").addEventListener("click", () => { if (state.running) stop(); });
+// podpowiedzi w nagłówkach sekcji ustawień – na bieżąco
+$("settingsForm").addEventListener("change", () => renderAccHints());
+$("settingsForm").addEventListener("input", (e) => { if (e.target.matches("input[type=number], #fcKey")) renderAccHints(); });
 $("spkInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setSpeaker($("spkInput").value); } });
 $("spkInput").addEventListener("change", () => { if ($("spkInput").value.trim()) setSpeaker($("spkInput").value); });
 // zamiana mowy: lista modeli tylko dla modelu lokalnego, model transkrypcji tylko dla OpenAI
@@ -3027,6 +3369,40 @@ document.querySelectorAll("input[name=provider]").forEach((r) => r.addEventListe
 }));
 $("model").addEventListener("change", () => { renderModelCaps(); renderCostSettings(); });
 $("apiKey").addEventListener("change", () => tryLoadModels(false));
+// Ikonka przy postach: zgoda przeglądarki musi paść w reakcji na kliknięcie, więc prosimy od razu przy zaznaczeniu
+// i od razu zapisujemy tylko tę jedną opcję (tło dokłada albo zdejmuje ikonki w otwartych kartach).
+// Osobno dla Facebooka i dla X – każda zgoda dotyczy tylko jednego serwisu.
+async function renderPostButtonsInfo(note = "") {
+  const el = $("postButtonsInfo");
+  if (note) { el.textContent = note; el.hidden = false; return; }
+  const on = SITE_IDS.filter((id) => $(POST_SITES[id].key).checked);
+  if (!on.length) { el.hidden = true; return; }
+  const missing = [];
+  for (const id of on) if (!(await hasSiteAccess(id))) missing.push(POST_SITES[id].label);
+  el.textContent = missing.length ? t("set.postButtonsNoAccess", { site: missing.join(", ") }) : t("set.postButtonsOn");
+  el.hidden = false;
+}
+async function savePostSite(id, on) {
+  const key = POST_SITES[id].key;
+  const { settings } = await chrome.storage.local.get("settings");
+  // pierwsza zmiana po starej wspólnej opcji: drugi serwis zostaje tak, jak był
+  const next = { ...(settings || {}), ...Object.fromEntries(SITE_IDS.map((x) => [POST_SITES[x].key, postSitesOn(settings)[x]])), [key]: on };
+  delete next.postButtons;
+  for (const x of SITE_IDS) S[POST_SITES[x].key] = next[POST_SITES[x].key];
+  delete S.postButtons;
+  await chrome.storage.local.set({ settings: next });
+}
+for (const id of SITE_IDS) {
+  $(POST_SITES[id].key).addEventListener("change", (e) => {
+    const box = e.target;
+    if (!box.checked) { savePostSite(id, false).then(() => renderPostButtonsInfo()); return; }
+    chrome.permissions.request({ origins: POST_SITES[id].origins }).catch(() => false).then(async (ok) => {
+      if (!ok) { box.checked = false; renderPostButtonsInfo(t("set.postButtonsDenied", { site: POST_SITES[id].label })); renderAccHints(); return; }
+      await savePostSite(id, true);
+      renderPostButtonsInfo();
+    });
+  });
+}
 $("settingsForm").addEventListener("submit", async (e) => {
   if (e.submitter?.value !== "save") return;
   const prevLang = getLang();
@@ -3052,6 +3428,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     isPopupWindow().then((popup) => { if (popup) chrome.windows.update(myWindow.id, { focused: true }).catch(() => {}); });
     return;
   }
+  if (msg?.type === "inject-act") {
+    const src = session.sources.find((x) => x.captureId === msg.captureId && (msg.tabId == null || x.tabId === msg.tabId));
+    reply({ panel: true, found: !!src });
+    if (!src) return;
+    const g = groupEl(src.id, { create: false });
+    if (g) {
+      if (g.classList.contains("collapsed")) { g.classList.remove("collapsed"); renderGroupHead(g); }
+      g.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    if (msg.act === "reply") {
+      const mine = state.claims.filter((c) => c.srcId === src.id).sort((a, b) => (a.t || 0) - (b.t || 0));
+      if (mine.length) openReply(mine, src);
+    }
+    isPopupWindow().then((popup) => { if (popup) chrome.windows.update(myWindow.id, { focused: true }).catch(() => {}); });
+    return;
+  }
   if (msg?.type === "pending-capture") {
     reply({ panel: true });
     consumePending();
@@ -3066,8 +3458,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
 // Język interfejsu: z ustawień albo z przeglądarki.
 function localize(rerender = false) {
   applyI18n();
+  for (const n of document.querySelectorAll("[data-i18n-split]")) {
+    const [name, ...rest] = t(n.dataset.i18nSplit).split(" – ");
+    n.replaceChildren(h("span", "split-name", name), ...(rest.length ? [h("span", "split-desc", rest.join(" – "))] : []));
+  }
   $("settingsTitle").textContent = t("app.settingsVersion", { v: chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version });
-  $("toggle").textContent = t(state.running ? "btn.stop" : "btn.start");
+  setToggle(state.running);
   if (!state.running && !state.busy) setStatus(t("app.ready"));
   if (rerender) {
     rerenderCards();
@@ -3075,6 +3471,9 @@ function localize(rerender = false) {
   }
 }
 
+hydrateIcons();
+hydrateIcons($("cardTpl").content);
+hydrateIcons($("histTpl").content);
 await loadSettings();
 setLang(resolveLang(S.uiLang));
 localize();

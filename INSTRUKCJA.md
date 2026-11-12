@@ -53,7 +53,21 @@ kliknięcia Start) – źródło w panelu ma jej tytuł, a gdy w tej karcie prze
 z nowym tytułem. „Mikrofon” słucha dźwięku z otoczenia (np. telewizora albo głośników) – wtyczka nie wie wtedy, co gra,
 więc źródło nazywa się po prostu „Mikrofon”.
 
-Przyciski w panelu (Start, 📄 Artykuł, 👆 Wskaż post, ✂ Zaznaczenie) zawsze działają na karcie, którą masz teraz przed sobą.
+Przyciski w panelu (Start, Artykuł, Wskaż post, Zaznaczenie, Wycinek) zawsze działają na karcie, którą masz teraz przed sobą.
+
+### Wygląd panelu
+
+- **Na górze:** nazwa, stan („Gotowe…”, „Sprawdzam…”, „Słucham…”) oraz ikony **Historia** (zegar) i **Ustawienia**
+  (koło zębate). Gdy coś się sprawdza albo słuchasz, pod nagłówkiem jest pasek z czasem i przyciskiem **Przerwij**
+  albo czerwony pasek **Na żywo** z przyciskiem **Stop**.
+- **Pusty panel:** dwie karty – **Sprawdź stronę** (Artykuł, Wskaż post, Zaznaczenie, Wycinek) i **Słuchaj na żywo**
+  (Dźwięk karty / Mikrofon i duży **Start**) – oraz krótkie „Jak to działa”. Po pierwszym wyniku te same przyciski
+  zostają nad wynikami jako zwarty pasek – kolejną rzecz sprawdzisz bez przewijania.
+- **Nad wynikami:** pigułki z liczbą werdyktów każdego rodzaju (kliknięcie pokazuje tylko te karty, drugie – wszystkie),
+  przełącznik **Tylko problemy** i koszt sesji.
+- **Wynik:** karta źródła (rodzaj, serwis, tytuł, data, liczniki), **Ocena całości** z paskiem pięciu poziomów,
+  ostrzeżenie przed oszustwem, karty werdyktów i chwyty erystyczne.
+- Jasny i ciemny motyw według systemu. Panel działa przy szerokości od 320 do 480 px.
 
 Do sprawdzania faktów potrzebny jest dostawca modelu: logowanie **Continue with ChatGPT**, klucz API albo inny dostawca
 (Gemini, Claude, OpenRouter – niżej). To wystarczy do artykułów, postów, zaznaczeń i obrazków.
@@ -83,8 +97,40 @@ Trzy sposoby:
 - **Wskaż post** – przycisk **👆 Wskaż post** albo prawy przycisk → **Wskaż post lub fragment do sprawdzenia**.
   Najedź na post (podświetli się ramką) i kliknij. **Shift+klik** – dodaj i wskazuj dalej (kilka postów/komentarzy
   po kolei, dodane mają zieloną ramkę); ↑/↓ – większy/mniejszy fragment; Esc – koniec.
-  Z posta brany jest **tylko sam post** – bez komentarzy, odpowiedzi i przycisków. Komentarz możesz sprawdzić,
+  Z posta brany jest **tylko sam post** – bez komentarzy, odpowiedzi i przycisków (także bez „Obserwuj” czy
+  „Dołącz” obok nazwy profilu – autorem jest sama nazwa). Komentarz możesz sprawdzić,
   wskazując albo zaznaczając właśnie jego.
+
+### Ikonka przy postach (Facebook, X)
+
+Zamiast wskazywać post, możesz go sprawdzić jednym kliknięciem. Włącz w **⚙ → Ikonka przy postach** – osobno
+**na Facebooku** i **na X** (domyślnie oba wyłączone). Przeglądarka zapyta o zgodę tylko na serwis, który włączasz
+(facebook.com albo x.com) – bez tej zgody ikonka się tam nie pojawi. Wyłączenie jednego serwisu nie rusza drugiego.
+Opcja działa od razu, także w otwartych kartach, bez zapisywania.
+
+Ikonka pojawia się **dopiero po najechaniu myszą na post** – w jego prawym górnym rogu, na lewo od „…” (menu
+posta; na X także na lewo od ikonki Groka). Nie zmienia układu strony, a gdy zjedziesz z posta, znika. Kursor nad
+komentarzem albo udostępnionym postem też ją pokazuje – zawsze dla posta „z wierzchu”. Post bez „…” ma ikonkę przy
+prawej krawędzi, pod nagłówkiem.
+
+Kliknięcie otwiera panel i od razu sprawdza ten post – z obrazkami, bez komentarzy i bez okna podglądu. Na Facebooku
+wtyczka sama rozwija „Zobacz więcej”. Na X skrócony tweet pokazuje podgląd, bo „Pokaż więcej” otwiera osobną stronę –
+możesz tam dokleić resztę tekstu.
+
+**Wynik pod postem.** W trakcie sprawdzania ikonka się kręci, a potem pod postem (na Facebooku pod tekstem, na X pod
+paskiem akcji) pojawia się ramka Fact Checkera: ocena całości (od dwóch twierdzeń), werdykty z krótkim wyjaśnieniem,
+opinia, źródła oraz przyciski **Kopiuj jako odpowiedź** i **Szczegóły w panelu**. Po wyniku ikonka jest wypełniona
+na niebiesko: kliknięcie chowa ramkę (podpowiedź „Ukryj”), następne pokazuje ją z powrotem bez ponownego sprawdzania
+(„Pokaż wynik”). Ramka jest widoczna tylko u Ciebie: wtyczka
+niczego nie publikuje, a skrypty serwisu nie mają do niej zwykłego dostępu (zamknięty Shadow DOM). Wynik pod postem
+pojawia się, gdy panel jest otwarty – to w nim działa sprawdzanie.
+
+Skrypt ikonek niczego nie czyta ani nie wysyła sam z siebie: śledzi tylko, nad którym postem jest kursor. Treść posta
+idzie do modelu dopiero po kliknięciu. Gdyby przeglądarka nie pozwoliła otworzyć panelu, post czeka w kolejce –
+kliknij ikonę wtyczki na pasku (będzie na niej „1”).
+
+Facebook często zmienia budowę strony. Jeśli ikonka przy jakimś poście się nie pojawi albo stanie w złym miejscu, użyj **Wskaż post** albo
+skrótu **Alt+Shift+F**.
 
 Tekst dłuższy niż 2000 znaków (albo skrócony post z „Zobacz więcej”) najpierw pokazuje się w oknie **„Co wyślę do
 sprawdzenia”** – możesz go przyciąć albo anulować. Bardzo długie teksty są dzielone na części (maks. ok. 48 000 znaków).
@@ -164,8 +210,10 @@ Nowa sesja zaczyna się tylko, gdy:
 Zamknięcie i ponowne otwarcie panelu nie zaczyna nowej sesji – ostatnia wraca sama, jeśli przerwa była krótsza.
 Ten sam film po Stop/Start to dalej to samo źródło; inny film – nowe źródło w tej samej sesji.
 
-- **🕘 Historia** (obok ⚙): lista sesji (tytuł = pierwsze źródło, „(+2)” = ile jeszcze), wyszukiwarka, **Otwórz**,
-  **Eksport .md** (sekcja na każde źródło), **Usuń**. Otwarta sesja przyjmuje kolejne sprawdzenia.
+- **Historia** (ikona zegara obok ustawień): lista sesji (tytuł = pierwsze źródło, „(+2)” = ile jeszcze), wyszukiwarka,
+  **Otwórz**, **Eksport .md** (sekcja na każde źródło), **Raport**, **Usuń**. Otwarta sesja przyjmuje kolejne sprawdzenia.
+- Opcja **Zapisuj sesje w historii** (⚙ → *Zapisywanie*, domyślnie włączona). Wyłączona: wyniki są tylko na ekranie
+  i znikają po zamknięciu panelu albo nowej sesji. Pamięć werdyktów działa wtedy dalej, jeśli jest włączona.
 - Opcja **Po Stop zapisz też plik .md** – plik ląduje w `Pobrane/Fact Checker/`.
 - Historia jest usuwana tylko razem z wtyczką – przy aktualizacji używaj „Przeładuj”, nie „Usuń”.
 
@@ -218,12 +266,13 @@ ich werdykty (np. fałszywa teza nigdy nie dostanie „Rzetelny, z drobnymi bł�
 Ocena powstaje **po** werdyktach, osobnym, małym zapytaniem bez wyszukiwania – model pisze ją tylko z werdyktów i
 uwag do obrazków, bez nowych faktów. Dotyczy sprawdzonych twierdzeń, nie całego tekstu (opinie i rzeczy
 niesprawdzalne do niej nie wchodzą). ↻ pisze ją jeszcze raz. Trafia do pamięci werdyktów (ten sam artykuł czy mem
-pokaże ją od razu), do historii (plakietka przy sesji), do raportu i eksportu Markdown, a „Odpowiedz na cały post”
-zaczyna od głównej tezy, tak jak ocena.
+pokaże ją od razu), do historii (plakietka przy sesji), do raportu i eksportu Markdown. **„Kopiuj jako odpowiedź”**
+w stopce oceny daje jeden komentarz do wszystkich werdyktów – zaczyna od oceny całości i głównej tezy.
 
-**Karty zwinięte do jednej linii.** Gdy ocena jest gotowa, karty źródła pokazują tylko werdykt i twierdzenie,
-najpierw problemy (fałsz, wprowadza w błąd, półprawda), potem reszta. Kliknij kartę, żeby zobaczyć szczegóły;
-**„Rozwiń karty”** pod oceną rozwija wszystkie naraz.
+**Karty zwinięte.** Karty pokazują najpierw tylko werdykt, pewność i twierdzenie; najpierw problemy (fałsz, wprowadza
+w błąd, półprawda, brak danych), potem reszta. Kliknij kartę, żeby zobaczyć cytat, wyjaśnienie, co potwierdza, przeciwne
+dane, czego brakuje i źródła – wszystkie te sekcje są od razu rozwinięte (każdą możesz zwinąć). **„Rozwiń karty”** (pod oceną albo przy licznikach źródła) rozwija wszystkie naraz.
+Rozwinięta od razu jest jedyna karta źródła i najnowsza karta z nagrania.
 
 Dla dźwięku (karta, mikrofon) oceny całości nie ma – tam jest raport sesji. Jedno twierdzenie bez obrazka też jej
 nie dostaje, bo karta już jest podsumowaniem. Automat można wyłączyć w ⚙ (Tryb pracy → „Podsumowuj artykuły i
@@ -292,16 +341,17 @@ stwierdzenie wtyczki – a pod nią **„Ocena”**, czyli wyjaśnienie werdyktu
 
 Na dole karty:
 
-- **👍 / 👎** – oceń werdykt. Po 👎 napisz krótko, co jest nie tak (zły werdykt, nieaktualne dane, nikt tego nie
-  powiedział…). Drugie kliknięcie cofa ocenę.
-- **🔍 Sprawdź dokładniej** (pojawia się po 👎) – to jedno twierdzenie idzie do sprawdzenia od zera w trybie
-  dokładnym (więcej wyszukiwań, źródła pierwotne). Model dostaje fragment tekstu wokół cytatu, poprzedni werdykt i Twój
-  komentarz – jako wskazówkę, co sprawdzić, a nie jako fakt (werdykt zmieni tylko, jeśli dowody to potwierdzą). Jeśli
+- **🔍 Sprawdź dokładniej** – gdy werdykt budzi wątpliwości. Otwiera pole, w którym możesz (nie musisz) napisać, co
+  sprawdzić (np. nieaktualne dane, zły kontekst, nikt tego nie powiedział); **„Sprawdź”** (albo Enter) uruchamia
+  sprawdzenie, **„Anuluj”** zamyka pole bez wysyłania. To jedno twierdzenie idzie do sprawdzenia od zera w trybie
+  dokładnym (więcej wyszukiwań, źródła pierwotne). Model dostaje fragment tekstu wokół cytatu, poprzedni werdykt i Twoją
+  uwagę – jako wskazówkę, co sprawdzić, a nie jako fakt (werdykt zmieni tylko, jeśli dowody to potwierdzą). Jeśli
   masz w ⚙ klucz i wybrany model u innego dostawcy (np. Gemini), możesz wybrać go z listy – to „druga opinia”. Karta
   pokaże nowy werdykt i dopisek „Sprawdzone dokładniej (…) – wcześniej: Półprawda” (albo „werdykt bez zmian”);
-  pamięć werdyktów i ocena całości aktualizują się same. Kosztuje mniej więcej tyle co jedno zwykłe sprawdzenie. Wszystkie oceny wyeksportujesz w 🕘 Historii przyciskiem
-  **„Eksportuj oceny (JSON)”** – plik zawiera werdykt, model, sprawdzany tekst i Twój komentarz, więc nadaje się
-  do poprawiania promptów.
+  pamięć werdyktów i ocena całości aktualizują się same. Kosztuje mniej więcej tyle co jedno zwykłe sprawdzenie.
+  Wszystkie takie sprawdzenia wyeksportujesz w 🕘 Historii przyciskiem **„Eksportuj dokładniejsze sprawdzenia (JSON)”**
+  – plik zawiera werdykt przed i po, model, sprawdzany tekst i Twoją uwagę, więc nadaje się do poprawiania promptów.
+  (Łapki 👍/👎 z wersji do 0.7.3 zniknęły; dawne oceny nadal trafiają do tego eksportu.)
 - **📋 Kopiuj jako odpowiedź** – okienko z komentarzem do wklejenia pod postem, napisanym ludzkim językiem i
   dopasowanym do posta (panel mówi formalnie, komentarz – jak człowiek w dyskusji). Szczegóły niżej.
 - **📚 Sprawdzali to też fact-checkerzy** – patrz niżej.
@@ -311,19 +361,22 @@ wyroki), *nauka*, *urząd*, *sondaż*, *fact-check*, *encyklopedia*, *media*, *s
 adresie, bez modelu, więc nie kosztują nic. Od razu widać, czy werdykt stoi na danych i dokumentach, czy na artykule
 prasowym albo wpisie. Strona spoza list (np. firmy) nie ma plakietki.
 
-Nad listą werdyktów są liczniki (Prawda: 3 · Fałsz: 2…) i przycisk **„Tylko problematyczne”**, który zostawia na
-ekranie tylko półprawdy, manipulacje i fałsze. Każde źródło ma też własne liczniki.
+Nad listą werdyktów są pigułki z liczbą werdyktów każdego rodzaju – kliknięcie zostawia na ekranie tylko te karty
+(np. same fałsze), drugie kliknięcie przywraca wszystkie. Przełącznik **„Tylko problemy”** zostawia półprawdy,
+manipulacje i fałsze. Każde źródło ma też własne liczniki.
 
 ## Odpowiedź do wklejenia
 
-**📋 Kopiuj jako odpowiedź** (pod werdyktem) albo **💬 Odpowiedz na cały post** (przy źródle z kilkoma werdyktami)
-otwiera okienko z gotowym komentarzem:
+**📋 Kopiuj jako odpowiedź** jest w trzech miejscach: pod każdym werdyktem, w stopce **oceny całości** (jeden
+komentarz do wszystkich werdyktów źródła) i w ramce wyniku pod postem. Gdy źródło ma kilka werdyktów, a oceny całości
+jeszcze nie ma, przy źródle jest **💬 Odpowiedz na cały post**. Każdy z nich otwiera okienko z gotowym komentarzem:
 
-- Trzy tony: **Rzeczowo** (3–6 zdań, spokojnie), **Na luzie** (2–3 zdania) i **Krótko pod X** (mieści się w 280
-  znakach, z jednym linkiem – licznik pokazuje długość tak, jak liczy ją X). Przy postach z X od razu wybiera się
-  krótka wersja; poza tym – ostatnio używana zakładka.
-- Zakładka **Oryginał** – tekst werdyktu tak jak w panelu, bez przeróbek przez AI (nic nie kosztuje).
+- Na start zawsze **Oryginał** (zakładka skrajnie z prawej) – tekst werdyktu tak jak w panelu, bez AI, od razu i za
+  darmo. Odpowiedź na całe źródło zaczyna się od oceny całości („Ocena całości: Mieszany. …”), jeśli jest gotowa.
   „↺ Przywróć oryginał” cofa Twoje poprawki.
+- Model pisze komentarz **dopiero, gdy wybierzesz ton**: **Rzeczowo** (3–6 zdań, spokojnie), **Na luzie** (2–3
+  zdania) albo **Krótko pod X** (mieści się w 280 znakach, z jednym linkiem – licznik pokazuje długość tak, jak liczy
+  ją X).
 - Każda wersja pisze się **tylko raz**: możesz przełączać zakładki w trakcie pisania albo zamknąć okienko – tekst
   dokończy się w tle i będzie czekał. ✓ przy zakładce = gotowe, … = właśnie się pisze.
 - Komentarz pisze wybrany model na żądanie (bez wyszukiwania, ułamek centa; w planie ChatGPT bez dopłat) –
@@ -396,6 +449,9 @@ werdyktów, tabela mówców, wszystkie werdykty ze źródłami i obrazkami. **Dr
 - Szczegóły: **⚙ → Polityka prywatności** (plik `PRIVACY.md`) – co, dokąd i kiedy jest wysyłane.
 - **Ukrywaj osoby**: na zrzutach zamazuje zdjęcia profilowe i nazwy autorów, a z tekstu do modelu usuwa autora
   posta i @uchwyty. W podglądzie przed wysłaniem widać, co dokładnie pójdzie do modelu.
+- **Ikonka przy postach** (domyślnie wyłączona) daje wtyczce stały dostęp do serwisu, który włączysz (facebook.com,
+  x.com – każdy osobno) – tylko po to,
+  żeby pokazywać ikonkę po najechaniu na post. Post jest czytany dopiero po kliknięciu jego ikonki.
 - **Pamiętaj klucze API po zamknięciu przeglądarki** – wyłącz, żeby klucze znikały po zamknięciu przeglądarki.
   „Usuń wszystkie klucze” kasuje je od razu. Klucze nie są szyfrowane – używaj kluczy z limitem wydatków.
 

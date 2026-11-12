@@ -4,388 +4,513 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fact Checker</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="fc-tokens.css">
+<link rel="stylesheet" href="fc-components.css">
 <link rel="stylesheet" href="sidepanel.css">
 </head>
-<body>
-<header class="top">
-  <div class="brand">
-    <span class="dot" id="liveDot" aria-hidden="true"></span>
-    <strong>Fact Checker</strong>
-    <span class="status" id="status" data-i18n="app.ready"></span>
+<body class="fc">
+<header class="fc-header top">
+  <span class="fc-logo" aria-hidden="true"><i data-icon="check"></i></span>
+  <div class="fc-grow brand">
+    <div class="fc-header__name">Fact Checker</div>
+    <div class="fc-header__status"><span class="fc-dot" id="liveDot" aria-hidden="true"></span><span class="status" id="status" role="status" aria-live="polite" data-i18n="app.ready"></span></div>
   </div>
-  <div class="top-actions">
-    <button class="icon" id="openHistory" data-i18n-title="hist.title" data-i18n-aria="hist.title">🕘</button>
-    <button class="icon" id="openSettings" data-i18n-title="app.settings" data-i18n-aria="app.settings">⚙</button>
-  </div>
-  <div class="activity" id="activity" role="status" aria-live="polite" hidden>
-    <div class="act-stripe"></div>
-    <div class="act-row">
-      <span class="act-dot" aria-hidden="true"></span>
-      <span id="actText"></span>
-      <span id="actTime"></span>
-      <button type="button" id="actCancel" data-i18n="act.cancel"></button>
-    </div>
+  <div class="fc-row fc-row--nowrap top-actions">
+    <button type="button" class="fc-btn fc-btn--icon" id="openHistory" data-i18n-title="hist.title" data-i18n-aria="hist.title"><i data-icon="history"></i></button>
+    <button type="button" class="fc-btn fc-btn--icon" id="openSettings" data-i18n-title="app.settings" data-i18n-aria="app.settings"><i data-icon="settings"></i></button>
   </div>
 </header>
 
-<section class="controls">
-  <div class="src-pick">
-    <span class="muted" data-i18n="src.listenLabel"></span>
-    <div class="seg" id="srcSeg" role="radiogroup" data-i18n-aria="src.label">
-      <label><input type="radio" name="src" value="tab" checked><span class="seg-dot" aria-hidden="true"></span><span aria-hidden="true">🔊</span><span data-i18n="src.tab"></span></label>
-      <label><input type="radio" name="src" value="mic"><span class="seg-dot" aria-hidden="true"></span><span aria-hidden="true">🎙️</span><span data-i18n="src.mic"></span></label>
+<div class="fc-activity activity" id="activity" role="status" aria-live="polite" hidden>
+  <i data-icon="loader-circle" class="fc-spin act-spin"></i>
+  <span class="fc-live-dot act-live" aria-hidden="true"></span>
+  <span class="fc-grow" id="actText"></span>
+  <span class="fc-timer" id="actTime"></span>
+  <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm" id="actCancel" data-i18n="act.cancel"></button>
+  <button type="button" class="fc-btn fc-btn--danger fc-btn--sm" id="actStop"><i data-icon="square"></i><span data-i18n="btn.stop"></span></button>
+</div>
+
+<main class="fc-panel__scroll" id="main">
+  <!-- Start: pełne karty trybów; po pierwszym wyniku – zwarty pasek tych samych przycisków (CSS: :has(#empty[hidden])) -->
+  <section class="fc-card start" id="start">
+    <div class="start-page">
+      <div class="fc-mode__head">
+        <span class="fc-mode__icon"><i data-icon="file-text"></i></span>
+        <div><div class="fc-card__title" data-i18n="start.pageTitle"></div><div class="fc-t-13 fc-muted" data-i18n="start.pageSub"></div></div>
+      </div>
+      <div class="fc-actions page-tools">
+        <button type="button" class="fc-action" id="pageArticle" data-i18n-title="page.articleHint"><i data-icon="file-text"></i><span class="fc-action__title" data-i18n="page.article"></span><span class="fc-action__hint" data-i18n="start.articleHint"></span></button>
+        <button type="button" class="fc-action" id="pagePick" data-i18n-title="page.pickHint"><i data-icon="mouse-pointer-click"></i><span class="fc-action__title" data-i18n="page.pick"></span><span class="fc-action__hint"><span class="fc-kbd">Shift</span><span data-i18n="start.pickHint"></span></span></button>
+        <button type="button" class="fc-action" id="pageSelection" data-i18n-title="page.selectionHint"><i data-icon="text-select"></i><span class="fc-action__title" data-i18n="page.selection"></span><span class="fc-action__hint"><span class="fc-kbd">Alt+Shift+F</span></span></button>
+        <button type="button" class="fc-action" id="pageArea" data-i18n-title="page.areaHint"><i data-icon="scan"></i><span class="fc-action__title" data-i18n="page.area"></span><span class="fc-action__hint" data-i18n="start.areaHint"></span></button>
+      </div>
     </div>
-  </div>
-  <button class="primary" id="toggle" data-i18n="btn.start"></button>
-</section>
-
-<section class="speaker-bar" id="speakerBar" hidden>
-  <span class="muted" data-i18n="spk.label" data-i18n-title="spk.hint"></span>
-  <div class="spk-chips" id="spkChips"></div>
-  <input id="spkInput" list="spkList" autocomplete="off" data-i18n-placeholder="spk.placeholder" data-i18n-aria="spk.placeholder">
-  <datalist id="spkList"></datalist>
-</section>
-
-<section class="page-tools">
-  <span class="muted" data-i18n="page.label"></span>
-  <button id="pageArticle" data-i18n="page.article" data-i18n-title="page.articleHint"></button>
-  <button id="pagePick" data-i18n="page.pick" data-i18n-title="page.pickHint"></button>
-  <button id="pageSelection" data-i18n="page.selection" data-i18n-title="page.selectionHint"></button>
-  <button id="pageArea" data-i18n="page.area" data-i18n-title="page.areaHint"></button>
-</section>
-
-<section class="queue" id="queue" hidden>
-  <div class="q-head"><strong id="qTitle"></strong> <a href="#" id="qClear" data-i18n="queue.clear"></a></div>
-  <ol id="qList"></ol>
-</section>
-
-<div class="banner" id="banner" hidden></div>
-
-<section class="summary" id="summary" hidden>
-  <div id="sumPills"></div>
-  <button type="button" class="filter" id="onlyProblems" aria-pressed="false"></button>
-</section>
-<div class="costline muted" id="costLine" hidden></div>
-
-<section class="feed" id="feed" aria-live="polite">
-  <div class="empty" id="empty">
-    <p data-i18n-html="empty.p1"></p>
-    <p data-i18n="empty.p2"></p>
-    <p data-i18n="empty.p3"></p>
-    <p class="last" id="lastSession" hidden><span data-i18n="hist.last"></span> <a href="#" id="lastSessionLink"></a></p>
-  </div>
-</section>
-
-<details class="transcript" id="transcriptBox">
-  <summary><span id="txTitle"></span> <span class="muted" id="wordCount"></span></summary>
-  <div class="tx" id="transcript"></div>
-  <div class="tx interim" id="interim"></div>
-  <div class="row">
-    <button id="checkNow" data-i18n="tx.checkNow"></button>
-    <button id="exportMd" data-i18n="tx.export"></button>
-    <button id="openReport" data-i18n="tx.report" data-i18n-title="tx.reportHint"></button>
-    <button id="clear" data-i18n="tx.clear"></button>
-  </div>
-  <label class="manual"><span data-i18n="tx.manualLabel"></span>
-    <textarea id="manualText" rows="3" data-i18n-placeholder="tx.manualPlaceholder"></textarea>
-  </label>
-  <button id="manualCheck" data-i18n="tx.manualCheck"></button>
-</details>
-
-<dialog id="settings">
-  <form method="dialog" id="settingsForm">
-    <h2 id="settingsTitle" data-i18n="app.settings"></h2>
-
-    <fieldset>
-      <legend data-i18n="set.languages"></legend>
-      <label><span data-i18n="set.uiLang"></span>
-        <select id="uiLang">
-          <option value="auto" data-i18n="set.uiAuto"></option>
-          <option value="en">English</option>
-          <option value="pl">Polski</option>
-        </select>
-      </label>
-      <p class="hint" data-i18n="set.uiLangHint"></p>
-      <label><span data-i18n="set.convLang"></span>
-        <select id="language">
-          <option value="pl" data-i18n="lang.pl"></option>
-          <option value="en" data-i18n="lang.en"></option>
-        </select>
-      </label>
-      <p class="hint" data-i18n="set.convLangHint"></p>
-    </fieldset>
-
-    <fieldset>
-      <legend data-i18n="set.provider"></legend>
-      <label class="opt"><input type="radio" name="provider" value="chatgpt"> <span data-i18n="set.providerChatgpt"></span></label>
-      <div class="sub" id="chatgptBox">
-        <div id="account" class="muted"></div>
-        <button type="button" class="chatgpt" id="signIn">Continue with ChatGPT</button>
-        <button type="button" id="signOut" hidden data-i18n="set.signOut"></button>
+    <div class="start-listen">
+      <div class="fc-mode__head">
+        <span class="fc-mode__icon"><i data-icon="radio"></i></span>
+        <div><div class="fc-card__title" data-i18n="start.listenTitle"></div><div class="fc-t-13 fc-muted" data-i18n="start.listenSub"></div></div>
       </div>
-      <label class="opt"><input type="radio" name="provider" value="apikey"> <span data-i18n="set.providerKey"></span></label>
-      <label class="opt"><input type="radio" name="provider" value="gemini"> <span data-i18n="set.providerGemini"></span></label>
-      <label class="opt"><input type="radio" name="provider" value="anthropic"> <span data-i18n="set.providerAnthropic"></span></label>
-      <label class="opt"><input type="radio" name="provider" value="openrouter"> <span data-i18n="set.providerOpenrouter"></span></label>
-    </fieldset>
-
-    <fieldset>
-      <legend id="apiKeyLegend"></legend>
-      <input type="password" id="apiKey" autocomplete="off">
-      <p class="hint" id="apiKeyHint"></p>
-      <p class="hint key-status" id="keyStatus" hidden></p>
-      <p class="hint" id="providerInfo"></p>
-    </fieldset>
-
-    <fieldset>
-      <legend data-i18n="set.model"></legend>
-      <div class="row">
-        <select id="model"></select>
-        <button type="button" id="loadModels" data-i18n="set.refresh"></button>
+      <div class="listen-row">
+        <div class="fc-seg" id="srcSeg" role="radiogroup" data-i18n-aria="src.label">
+          <label class="fc-seg__opt"><input type="radio" name="src" value="tab" checked><i data-icon="volume-2"></i><span data-i18n="src.tab"></span></label>
+          <label class="fc-seg__opt"><input type="radio" name="src" value="mic"><i data-icon="mic"></i><span data-i18n="src.mic"></span></label>
+        </div>
+        <button type="button" class="fc-btn fc-btn--primary fc-btn--lg fc-btn--block" id="toggle"><i data-icon="play"></i><span id="toggleLabel" data-i18n="btn.start"></span></button>
       </div>
-      <p class="hint" id="modelCaps"></p>
-      <label class="check"><input type="checkbox" id="webSearch"> <span data-i18n="set.webSearch"></span></label>
-    </fieldset>
+    </div>
+  </section>
 
-    <fieldset>
-      <legend data-i18n="set.mode"></legend>
-      <label class="opt"><input type="radio" name="mode" value="eco"> <span data-i18n="set.modeEco"></span></label>
-      <label class="opt"><input type="radio" name="mode" value="normal"> <span data-i18n="set.modeNormal"></span></label>
-      <label class="opt"><input type="radio" name="mode" value="thorough"> <span data-i18n="set.modeThorough"></span></label>
-      <p class="hint" data-i18n="set.modeHint"></p>
-      <label class="check"><input type="checkbox" id="autoSummary"> <span data-i18n="set.autoSummary"></span></label>
-      <p class="hint" data-i18n="set.autoSummaryHint"></p>
-      <label class="check"><input type="checkbox" id="tricks"> <span data-i18n="set.tricks"></span></label>
-      <p class="hint" data-i18n="set.tricksHint"></p>
-    </fieldset>
+  <section class="fc-card queue" id="queue" hidden>
+    <div class="fc-row q-head">
+      <span class="fc-card__title fc-grow" id="qTitle"></span>
+      <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm" id="qClear" data-i18n="queue.clear"></button>
+    </div>
+    <ol class="fc-queue" id="qList"></ol>
+  </section>
 
-    <fieldset>
-      <legend data-i18n="set.costs"></legend>
-      <p class="hint" id="costToday"></p>
-      <label><span data-i18n="set.dailyLimit"></span> <input type="number" id="dailyLimit" min="0" step="0.1" placeholder="0"></label>
-      <details class="prices">
-        <summary data-i18n="set.priceOwn"></summary>
-        <div class="row">
-          <label><span data-i18n="set.priceIn"></span> <input type="number" id="priceIn" min="0" step="0.01"></label>
-          <label><span data-i18n="set.priceOut"></span> <input type="number" id="priceOut" min="0" step="0.01"></label>
+  <div class="fc-note banner" id="banner" hidden></div>
+
+  <section class="fc-card speaker-bar" id="speakerBar" hidden>
+    <div class="fc-label" data-i18n="spk.title" data-i18n-title="spk.hint"></div>
+    <div class="fc-row spk-chips" id="spkChips"></div>
+    <div class="fc-row fc-row--nowrap spk-add">
+      <input class="fc-input fc-input--sm" id="spkInput" list="spkList" autocomplete="off" data-i18n-placeholder="spk.placeholder" data-i18n-aria="spk.placeholder">
+      <button type="button" class="fc-btn fc-btn--secondary fc-btn--sm" id="spkAdd" data-i18n-title="spk.add" data-i18n-aria="spk.add"><i data-icon="plus"></i></button>
+    </div>
+    <datalist id="spkList"></datalist>
+  </section>
+
+  <section class="fc-toolbar summary" id="summary" hidden>
+    <div class="fc-row sum-pills" id="sumPills"></div>
+    <div class="fc-row toolbar-row">
+      <label class="fc-switch-row" id="onlyProblemsRow"><button type="button" role="switch" class="fc-switch" id="onlyProblems" aria-checked="false"></button><span class="fc-row only-label"><i data-icon="filter"></i><span id="onlyProblemsLabel"></span></span></label>
+      <span class="fc-cost costline" id="costLine" hidden></span>
+    </div>
+  </section>
+
+  <section class="feed fc-stack" id="feed" aria-live="polite">
+    <div class="fc-card fc-card--flat empty" id="empty">
+      <div class="fc-label" data-i18n="howto.title"></div>
+      <ol class="fc-howto">
+        <li data-i18n="howto.1"></li>
+        <li data-i18n="howto.2"></li>
+        <li data-i18n="howto.3"></li>
+        <li><span data-i18n-html="howto.4"></span></li>
+      </ol>
+      <div class="last" id="lastSession" hidden>
+        <hr class="fc-divider">
+        <a href="#" class="fc-link fc-t-13" id="lastSessionLink"></a>
+      </div>
+    </div>
+  </section>
+
+  <details class="fc-acc transcript" id="transcriptBox">
+    <summary>
+      <span class="fc-acc__icon"><i data-icon="file-text"></i></span>
+      <span class="fc-grow fc-strong" id="txTitle"></span>
+      <span class="fc-t-12 fc-faint" id="wordCount"></span>
+      <i data-icon="chevron-right" class="fc-acc__chev"></i>
+    </summary>
+    <div class="fc-acc__body">
+      <div class="tx" id="transcript"></div>
+      <div class="tx interim" id="interim"></div>
+      <div class="fc-row tx-actions">
+        <button type="button" class="fc-btn fc-btn--primary fc-btn--sm" id="checkNow"><i data-icon="refresh-cw"></i><span data-i18n="tx.checkNow"></span></button>
+        <button type="button" class="fc-btn fc-btn--secondary fc-btn--sm" id="exportMd"><i data-icon="download"></i><span data-i18n="tx.export"></span></button>
+        <button type="button" class="fc-btn fc-btn--secondary fc-btn--sm" id="openReport" data-i18n-title="tx.reportHint"><i data-icon="file-chart-column"></i><span data-i18n="tx.report"></span></button>
+        <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm" id="clear"><i data-icon="eraser"></i><span data-i18n="tx.clear"></span></button>
+      </div>
+      <div class="fc-field manual">
+        <label class="fc-field__label" for="manualText" data-i18n="tx.manualLabel"></label>
+        <textarea id="manualText" class="fc-textarea" rows="3" data-i18n-placeholder="tx.manualPlaceholder"></textarea>
+        <button type="button" class="fc-btn fc-btn--secondary fc-btn--sm" id="manualCheck"><i data-icon="clipboard-paste"></i><span data-i18n="tx.manualCheck"></span></button>
+      </div>
+    </div>
+  </details>
+</main>
+
+<!-- ====== Ustawienia (pełny ekran panelu, akordeony, przyklejona stopka) ====== -->
+<dialog id="settings" class="fc-screen" aria-labelledby="settingsTitle">
+  <form method="dialog" id="settingsForm" class="fc-screen__form">
+    <header class="fc-header">
+      <button value="cancel" class="fc-btn fc-btn--icon" data-i18n-title="nav.back" data-i18n-aria="nav.back"><i data-icon="arrow-left"></i></button>
+      <div class="fc-grow"><h2 class="fc-header__name" id="settingsTitle" data-i18n="app.settings" tabindex="-1" autofocus></h2></div>
+    </header>
+    <div class="fc-panel__scroll set-scroll">
+
+      <details class="fc-acc" id="accLang">
+        <summary><span class="fc-acc__icon"><i data-icon="languages"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.languages"></span><span class="fc-t-12 fc-faint acc-hint" id="hintLang"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-field"><label class="fc-field__label" for="uiLang" data-i18n="set.uiLang"></label>
+            <select id="uiLang" class="fc-select">
+              <option value="auto" data-i18n="set.uiAuto"></option>
+              <option value="en">English</option>
+              <option value="pl">Polski</option>
+            </select>
+            <span class="fc-field__hint" data-i18n="set.uiLangHint"></span></div>
+          <div class="fc-field"><label class="fc-field__label" for="language" data-i18n="set.convLang"></label>
+            <select id="language" class="fc-select">
+              <option value="pl" data-i18n="lang.pl"></option>
+              <option value="en" data-i18n="lang.en"></option>
+            </select>
+            <span class="fc-field__hint" data-i18n="set.convLangHint"></span></div>
         </div>
       </details>
-      <p class="hint" id="priceHint"></p>
-      <p class="hint" data-i18n="set.costHint"></p>
-    </fieldset>
 
-    <fieldset>
-      <legend data-i18n="set.fcApi"></legend>
-      <input type="password" id="fcKey" autocomplete="off" placeholder="AIza…" data-i18n-aria="set.fcApi">
-      <div class="row"><button type="button" id="fcTest" data-i18n="set.fcTest"></button> <span class="hint key-status" id="fcStatus" hidden></span></div>
-      <p class="hint" data-i18n-html="set.fcHint"></p>
-    </fieldset>
+      <details class="fc-acc" id="accProvider" open>
+        <summary><span class="fc-acc__icon"><i data-icon="bot"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.provider"></span><span class="fc-t-12 fc-faint acc-hint" id="hintProvider"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-stack radios" role="radiogroup" data-i18n-aria="set.provider">
+            <label class="fc-radio"><input type="radio" name="provider" value="chatgpt"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.providerChatgpt"></span></label>
+            <div class="sub fc-stack" id="chatgptBox">
+              <div id="account" class="fc-t-13 fc-muted"></div>
+              <button type="button" class="fc-btn fc-btn--primary fc-btn--block chatgpt" id="signIn">Continue with ChatGPT</button>
+              <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm" id="signOut" hidden data-i18n="set.signOut"></button>
+            </div>
+            <label class="fc-radio"><input type="radio" name="provider" value="apikey"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.providerKey"></span></label>
+            <label class="fc-radio"><input type="radio" name="provider" value="gemini"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.providerGemini"></span></label>
+            <label class="fc-radio"><input type="radio" name="provider" value="anthropic"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.providerAnthropic"></span></label>
+            <label class="fc-radio"><input type="radio" name="provider" value="openrouter"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.providerOpenrouter"></span></label>
+          </div>
+          <div class="fc-field">
+            <label class="fc-field__label" for="apiKey" id="apiKeyLegend"></label>
+            <input type="password" id="apiKey" class="fc-input" autocomplete="off">
+            <span class="fc-field__hint" id="apiKeyHint"></span>
+            <span class="fc-field__hint key-status" id="keyStatus" hidden></span>
+            <span class="fc-field__hint" id="providerInfo"></span>
+          </div>
+        </div>
+      </details>
 
-    <section class="set-group" id="listenGroup" aria-labelledby="listenTitle">
-      <h3 id="listenTitle" data-i18n="set.listen"></h3>
-      <p class="hint" data-i18n="set.listenHint"></p>
+      <details class="fc-acc" id="accModel">
+        <summary><span class="fc-acc__icon"><i data-icon="cpu"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.model"></span><span class="fc-t-12 fc-faint acc-hint" id="hintModel"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-field">
+            <label class="fc-field__label" for="model" data-i18n="set.model"></label>
+            <div class="fc-row fc-row--nowrap">
+              <select id="model" class="fc-select fc-grow"></select>
+              <button type="button" class="fc-btn fc-btn--secondary" id="loadModels" data-i18n-title="set.refresh" data-i18n-aria="set.refresh"><i data-icon="refresh-cw"></i></button>
+            </div>
+            <span class="fc-field__hint" id="modelCaps"></span>
+          </div>
+          <label class="fc-switch-row"><input type="checkbox" class="fc-check" id="webSearch"><span data-i18n="set.webSearch"></span></label>
+        </div>
+      </details>
 
-      <fieldset>
-        <legend data-i18n="set.engine"></legend>
-        <label class="opt"><input type="radio" name="engine" value="local"> <span data-i18n="set.engineLocal"></span></label>
-        <label class="opt"><input type="radio" name="engine" value="openai"> <span data-i18n="set.engineOpenai"></span></label>
-        <label class="opt"><input type="radio" name="engine" value="chrome"> <span data-i18n="set.engineChrome"></span></label>
-        <label id="sttModelRow"><span data-i18n="set.sttModel"></span> <input id="sttModel" placeholder="gpt-4o-mini-transcribe"></label>
-        <p class="hint" id="engineHint"></p>
-      </fieldset>
+      <details class="fc-acc" id="accMode">
+        <summary><span class="fc-acc__icon"><i data-icon="gauge"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.mode"></span><span class="fc-t-12 fc-faint acc-hint" id="hintMode"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-stack radios" role="radiogroup" data-i18n-aria="set.mode">
+            <label class="fc-radio"><input type="radio" name="mode" value="eco"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.modeEco"></span></label>
+            <label class="fc-radio"><input type="radio" name="mode" value="normal"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.modeNormal"></span></label>
+            <label class="fc-radio"><input type="radio" name="mode" value="thorough"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.modeThorough"></span></label>
+          </div>
+          <span class="fc-field__hint" data-i18n="set.modeHint"></span>
+          <div class="fc-field"><label class="fc-switch-row"><input type="checkbox" class="fc-check" id="autoSummary"><span data-i18n="set.autoSummary"></span></label>
+            <span class="fc-field__hint" data-i18n="set.autoSummaryHint"></span></div>
+          <div class="fc-field"><label class="fc-switch-row"><input type="checkbox" class="fc-check" id="tricks"><span data-i18n="set.tricks"></span></label>
+            <span class="fc-field__hint" data-i18n="set.tricksHint"></span></div>
+        </div>
+      </details>
 
-      <fieldset id="modelsBox">
-        <legend data-i18n="set.localModels"></legend>
-        <p class="hint" data-i18n="set.localModelsHint"></p>
-        <p class="hint" id="deviceInfo" data-i18n="set.checkingGpu"></p>
-        <div id="modelList" class="models"></div>
-        <p class="hint" id="storageInfo"></p>
-      </fieldset>
+      <details class="fc-acc" id="accPosts">
+        <summary><span class="fc-acc__icon"><i data-icon="mouse-pointer-click"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.posts"></span><span class="fc-t-12 fc-faint acc-hint" id="hintPosts"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-field"><span class="fc-field__label" data-i18n="set.postButtons"></span>
+            <label class="fc-switch-row"><input type="checkbox" class="fc-check" id="postButtonsFb"><span data-i18n="set.postButtonsFb"></span></label>
+            <label class="fc-switch-row"><input type="checkbox" class="fc-check" id="postButtonsX"><span data-i18n="set.postButtonsX"></span></label>
+            <span class="fc-field__hint" data-i18n="set.postButtonsHint"></span>
+            <span class="fc-field__hint" id="postButtonsInfo" hidden></span></div>
+        </div>
+      </details>
 
-      <fieldset>
-        <legend data-i18n="set.rhythm"></legend>
-        <label><span data-i18n="set.interval"></span> <input type="number" id="intervalSec" min="10" max="300" step="5"></label>
-        <p class="hint" data-i18n="set.intervalHint"></p>
-        <label><span data-i18n="set.chunk"></span> <input type="number" id="chunkSec" min="5" max="25" step="1"></label>
-        <p class="hint" data-i18n="set.chunkHint"></p>
-      </fieldset>
-    </section>
+      <details class="fc-acc" id="accCosts">
+        <summary><span class="fc-acc__icon"><i data-icon="coins"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.costs"></span><span class="fc-t-12 fc-faint acc-hint" id="hintCosts"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <span class="fc-t-13" id="costToday"></span>
+          <div class="fc-progress" id="limitBar" hidden><i></i></div>
+          <div class="fc-field"><label class="fc-field__label" for="dailyLimit" data-i18n="set.dailyLimit"></label>
+            <input type="number" id="dailyLimit" class="fc-input" min="0" step="0.1" placeholder="0"></div>
+          <details class="fc-disc prices">
+            <summary><i data-icon="chevron-right" class="fc-disc__chev"></i><span data-i18n="set.priceOwn"></span></summary>
+            <div class="fc-row price-row">
+              <label class="fc-field"><span class="fc-field__label" data-i18n="set.priceIn"></span><input type="number" id="priceIn" class="fc-input" min="0" step="0.01"></label>
+              <label class="fc-field"><span class="fc-field__label" data-i18n="set.priceOut"></span><input type="number" id="priceOut" class="fc-input" min="0" step="0.01"></label>
+            </div>
+          </details>
+          <span class="fc-field__hint" id="priceHint"></span>
+          <span class="fc-field__hint" data-i18n="set.costHint"></span>
+        </div>
+      </details>
 
-    <fieldset>
-      <legend data-i18n="set.saving"></legend>
-      <p class="hint" data-i18n="set.savingHint"></p>
-      <label><span data-i18n="set.sessionGap"></span> <input type="number" id="sessionGap" min="0" max="72" step="1"></label>
-      <label class="check"><input type="checkbox" id="autoExport"> <span data-i18n="set.autoExport"></span></label>
-    </fieldset>
+      <details class="fc-acc" id="accFc">
+        <summary><span class="fc-acc__icon"><i data-icon="globe"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.fcApi"></span><span class="fc-t-12 fc-faint acc-hint" id="hintFc"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-field"><label class="fc-field__label" for="fcKey" data-i18n="set.fcKey"></label>
+            <div class="fc-row fc-row--nowrap">
+              <input type="password" id="fcKey" class="fc-input fc-grow" autocomplete="off" placeholder="AIza…" data-i18n-aria="set.fcApi">
+              <button type="button" class="fc-btn fc-btn--secondary" id="fcTest" data-i18n="set.fcTest"></button>
+            </div>
+            <span class="fc-field__hint key-status" id="fcStatus" hidden></span>
+            <span class="fc-field__hint" data-i18n-html="set.fcHint"></span></div>
+        </div>
+      </details>
 
-    <fieldset>
-      <legend data-i18n="set.memory"></legend>
-      <label><span data-i18n="set.memoryDays"></span> <input type="number" id="memoryDays" min="0" max="365" step="1"></label>
-      <p class="hint" data-i18n="set.memoryHint"></p>
-      <div class="row"><span class="hint" id="memInfo"></span> <button type="button" id="memClear" class="danger" data-i18n="set.memClear"></button></div>
-    </fieldset>
+      <details class="fc-acc set-group" id="listenGroup">
+        <summary><span class="fc-acc__icon"><i data-icon="radio"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" id="listenTitle" data-i18n="set.listen"></span><span class="fc-t-12 fc-faint acc-hint" id="hintListen"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <span class="fc-field__hint listen-hint" data-i18n="set.listenHint"></span>
+          <div class="fc-field">
+            <span class="fc-field__label" data-i18n="set.engine"></span>
+            <div class="fc-stack radios" role="radiogroup" data-i18n-aria="set.engine">
+              <label class="fc-radio"><input type="radio" name="engine" value="local"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.engineLocal"></span></label>
+              <label class="fc-radio"><input type="radio" name="engine" value="openai"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.engineOpenai"></span></label>
+              <label class="fc-radio"><input type="radio" name="engine" value="chrome"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.engineChrome"></span></label>
+            </div>
+            <label class="fc-field" id="sttModelRow"><span class="fc-field__label" data-i18n="set.sttModel"></span><input id="sttModel" class="fc-input" placeholder="gpt-4o-mini-transcribe"></label>
+            <span class="fc-field__hint" id="engineHint"></span>
+          </div>
+          <div class="fc-field" id="modelsBox">
+            <span class="fc-field__label" data-i18n="set.localModels"></span>
+            <span class="fc-field__hint" data-i18n="set.localModelsHint"></span>
+            <span class="fc-field__hint" id="deviceInfo" data-i18n="set.checkingGpu"></span>
+            <div id="modelList" class="models"></div>
+            <span class="fc-field__hint" id="storageInfo"></span>
+          </div>
+          <div class="fc-field">
+            <span class="fc-field__label" data-i18n="set.rhythm"></span>
+            <label class="fc-field"><span class="fc-t-13" data-i18n="set.interval"></span><input type="number" id="intervalSec" class="fc-input" min="10" max="300" step="5"></label>
+            <span class="fc-field__hint" data-i18n="set.intervalHint"></span>
+            <label class="fc-field"><span class="fc-t-13" data-i18n="set.chunk"></span><input type="number" id="chunkSec" class="fc-input" min="5" max="25" step="1"></label>
+            <span class="fc-field__hint" data-i18n="set.chunkHint"></span>
+          </div>
+        </div>
+      </details>
 
-    <fieldset>
-      <legend data-i18n="set.scam"></legend>
-      <label class="check"><input type="checkbox" id="scamCheck"> <span data-i18n="set.scamCheck"></span></label>
-      <p class="hint" data-i18n="set.scamCheckHint"></p>
-      <label class="check"><input type="checkbox" id="certList"> <span data-i18n="set.certList"></span></label>
-      <p class="hint" data-i18n="set.certListHint"></p>
-      <div class="row">
-        <span class="hint" id="certInfo"></span>
-        <button type="button" id="certRefresh" class="small" data-i18n="set.certRefresh"></button>
-      </div>
-    </fieldset>
+      <details class="fc-acc" id="accSaving">
+        <summary><span class="fc-acc__icon"><i data-icon="save"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.saving"></span><span class="fc-t-12 fc-faint acc-hint" id="hintSaving"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <span class="fc-field__hint" data-i18n="set.savingHint"></span>
+          <div class="fc-field"><label class="fc-switch-row"><input type="checkbox" class="fc-check" id="saveHistory"><span data-i18n="set.saveHistory"></span></label>
+            <span class="fc-field__hint" data-i18n="set.saveHistoryHint"></span></div>
+          <div class="fc-field"><label class="fc-field__label" for="sessionGap" data-i18n="set.sessionGap"></label>
+            <input type="number" id="sessionGap" class="fc-input" min="0" max="72" step="1"></div>
+          <label class="fc-switch-row"><input type="checkbox" class="fc-check" id="autoExport"><span data-i18n="set.autoExport"></span></label>
+        </div>
+      </details>
 
-    <fieldset>
-      <legend data-i18n="set.privacy"></legend>
-      <label class="check"><input type="checkbox" id="maskPeople"> <span data-i18n="set.maskPeople"></span></label>
-      <label class="check"><input type="checkbox" id="rememberKeys"> <span data-i18n="set.rememberKeys"></span></label>
-      <p class="hint" data-i18n="set.keysHint"></p>
-      <div class="row">
-        <button type="button" id="forgetKeys" class="danger" data-i18n="set.forgetKeys"></button>
-        <a href="privacy.html" target="_blank" rel="noopener" data-i18n="set.privacyLink"></a>
-      </div>
-    </fieldset>
+      <details class="fc-acc" id="accMemory">
+        <summary><span class="fc-acc__icon"><i data-icon="brain"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.memory"></span><span class="fc-t-12 fc-faint acc-hint" id="hintMemory"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-field"><label class="fc-field__label" for="memoryDays" data-i18n="set.memoryDays"></label>
+            <input type="number" id="memoryDays" class="fc-input" min="0" max="365" step="1">
+            <span class="fc-field__hint" data-i18n="set.memoryHint"></span></div>
+          <div class="fc-row"><span class="fc-t-12 fc-faint fc-grow" id="memInfo"></span>
+            <button type="button" id="memClear" class="fc-btn fc-btn--secondary fc-btn--sm danger"><i data-icon="trash-2"></i><span data-i18n="set.memClear"></span></button></div>
+        </div>
+      </details>
 
-    <div class="row end">
-      <button value="cancel" data-i18n="set.cancel"></button>
-      <button class="primary" id="saveSettings" value="save" data-i18n="set.save"></button>
+      <details class="fc-acc" id="accScam">
+        <summary><span class="fc-acc__icon"><i data-icon="shield-alert"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.scam"></span><span class="fc-t-12 fc-faint acc-hint" id="hintScam"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-field"><label class="fc-switch-row"><input type="checkbox" class="fc-check" id="scamCheck"><span data-i18n="set.scamCheck"></span></label>
+            <span class="fc-field__hint" data-i18n="set.scamCheckHint"></span></div>
+          <div class="fc-field"><label class="fc-switch-row"><input type="checkbox" class="fc-check" id="certList"><span data-i18n="set.certList"></span></label>
+            <span class="fc-field__hint" data-i18n="set.certListHint"></span></div>
+          <div class="fc-row"><span class="fc-t-12 fc-faint fc-grow" id="certInfo"></span>
+            <button type="button" id="certRefresh" class="fc-btn fc-btn--secondary fc-btn--sm"><i data-icon="refresh-cw"></i><span data-i18n="set.certRefresh"></span></button></div>
+        </div>
+      </details>
+
+      <details class="fc-acc" id="accPrivacy">
+        <summary><span class="fc-acc__icon"><i data-icon="lock"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.privacy"></span><span class="fc-t-12 fc-faint acc-hint" id="hintPrivacy"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <label class="fc-switch-row"><input type="checkbox" class="fc-check" id="maskPeople"><span data-i18n="set.maskPeople"></span></label>
+          <div class="fc-field"><label class="fc-switch-row"><input type="checkbox" class="fc-check" id="rememberKeys"><span data-i18n="set.rememberKeys"></span></label>
+            <span class="fc-field__hint" data-i18n="set.keysHint"></span></div>
+          <div class="fc-row">
+            <button type="button" id="forgetKeys" class="fc-btn fc-btn--secondary fc-btn--sm danger"><i data-icon="key-round"></i><span data-i18n="set.forgetKeys"></span></button>
+            <a href="privacy.html" target="_blank" rel="noopener" class="fc-link fc-t-13" data-i18n="set.privacyLink"></a>
+          </div>
+        </div>
+      </details>
+
+    </div>
+    <div class="fc-sticky-foot">
+      <button value="cancel" class="fc-btn fc-btn--secondary" data-i18n="set.cancel"></button>
+      <button class="fc-btn fc-btn--primary" id="saveSettings" value="save" data-i18n="set.save"></button>
     </div>
   </form>
 </dialog>
 
-<dialog id="preview" class="history">
-  <form method="dialog" class="preview">
-    <h2 data-i18n="pv.title"></h2>
-    <p class="pv-src" id="pvSource"></p>
-    <p class="pv-warn" id="pvWarn" hidden></p>
-    <div class="pv-images" id="pvImages" hidden></div>
-    <p class="hint" data-i18n="pv.hint"></p>
-    <textarea id="pvText" rows="14" spellcheck="false"></textarea>
-    <p class="hint" id="pvCount"></p>
-    <div class="row end">
-      <button value="cancel" data-i18n="set.cancel"></button>
-      <button class="primary" value="ok" data-i18n="pv.check"></button>
+<!-- ====== Podgląd przed wysłaniem ====== -->
+<dialog id="preview" class="fc-screen" aria-labelledby="pvTitle">
+  <form method="dialog" class="preview fc-screen__form">
+    <header class="fc-header">
+      <button value="cancel" class="fc-btn fc-btn--icon" data-i18n-title="nav.back" data-i18n-aria="nav.back"><i data-icon="arrow-left"></i></button>
+      <div class="fc-grow"><h2 class="fc-header__name" id="pvTitle" data-i18n="pv.title" tabindex="-1" autofocus></h2></div>
+    </header>
+    <div class="fc-panel__scroll">
+      <section class="fc-card fc-stack">
+        <div class="pv-src" id="pvSource"></div>
+        <p class="fc-note fc-v-warn pv-warn" id="pvWarn" hidden></p>
+        <div class="fc-label" id="pvImagesLabel" data-i18n="pv.imagesLabel" hidden></div>
+        <div class="pv-images" id="pvImages" hidden></div>
+        <div class="fc-field">
+          <label class="fc-field__label" for="pvText" data-i18n="pv.textLabel"></label>
+          <span class="fc-field__hint" data-i18n="pv.hint"></span>
+          <textarea id="pvText" class="fc-textarea" rows="14" spellcheck="false"></textarea>
+          <span class="fc-counter" id="pvCount"></span>
+        </div>
+      </section>
+    </div>
+    <div class="fc-sticky-foot">
+      <button value="cancel" class="fc-btn fc-btn--secondary" data-i18n="set.cancel"></button>
+      <button value="ok" class="fc-btn fc-btn--primary"><i data-icon="send"></i><span data-i18n="pv.check"></span></button>
     </div>
   </form>
 </dialog>
 
-<dialog id="replyDlg" class="history">
-  <form method="dialog" class="reply-form">
-    <h2 data-i18n="rp.title"></h2>
-    <p class="hint" id="rpFor"></p>
-    <div class="seg tones" role="radiogroup" data-i18n-aria="rp.tone">
-      <label><input type="radio" name="tone" value="plain"><span data-i18n="rp.plain"></span></label>
-      <label><input type="radio" name="tone" value="casual"><span data-i18n="rp.casual"></span></label>
-      <label><input type="radio" name="tone" value="x"><span data-i18n="rp.x"></span></label>
-      <label><input type="radio" name="tone" value="orig"><span data-i18n="rp.orig"></span></label>
+<!-- ====== Kopiuj jako odpowiedź (arkusz od dołu) ====== -->
+<dialog id="replyDlg" class="fc-sheet" aria-labelledby="rpTitle">
+  <form method="dialog" class="reply-form fc-stack">
+    <div class="fc-row fc-row--nowrap">
+      <h2 class="fc-t-16 fc-strong fc-grow" id="rpTitle" data-i18n="rp.title"></h2>
+      <button value="cancel" class="fc-btn fc-btn--icon" data-i18n-title="hist.close" data-i18n-aria="hist.close"><i data-icon="x"></i></button>
+    </div>
+    <p class="fc-t-12 fc-faint" id="rpFor"></p>
+    <div class="fc-seg tones" role="radiogroup" data-i18n-aria="rp.tone">
+      <label class="fc-seg__opt"><input type="radio" name="tone" value="plain"><span data-i18n="rp.plain"></span></label>
+      <label class="fc-seg__opt"><input type="radio" name="tone" value="casual"><span data-i18n="rp.casual"></span></label>
+      <label class="fc-seg__opt"><input type="radio" name="tone" value="x"><span data-i18n="rp.x"></span></label>
+      <label class="fc-seg__opt"><input type="radio" name="tone" value="orig"><span data-i18n="rp.orig"></span></label>
     </div>
     <div class="rp-box">
-      <textarea id="rpText" rows="13" spellcheck="true" data-i18n-aria="rp.title"></textarea>
-      <div class="rp-busy" id="rpBusy" hidden><span class="spinner"></span><span data-i18n="rp.writing"></span></div>
+      <textarea id="rpText" class="fc-textarea" rows="10" spellcheck="true" data-i18n-aria="rp.title"></textarea>
+      <div class="rp-busy" id="rpBusy" hidden><i data-icon="loader-circle" class="fc-spin"></i><span data-i18n="rp.writing"></span></div>
     </div>
-    <p class="hint rp-count" id="rpCount"></p>
-    <p class="hint rp-note" id="rpNote"></p>
-    <div class="row end">
-      <button type="button" id="rpRegen" data-i18n="rp.regen"></button>
-      <button value="cancel" data-i18n="hist.close"></button>
-      <button type="button" class="primary" id="rpCopy" data-i18n="rp.copy"></button>
+    <div class="fc-row rp-meta">
+      <span class="fc-counter rp-count" id="rpCount"></span>
+      <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm" id="rpRegen"><i data-icon="refresh-cw"></i><span id="rpRegenLabel"></span></button>
+    </div>
+    <p class="fc-field__hint rp-note" id="rpNote"></p>
+    <div class="fc-row rp-actions">
+      <button value="cancel" class="fc-btn fc-btn--secondary" data-i18n="hist.close"></button>
+      <button type="button" class="fc-btn fc-btn--primary" id="rpCopy"><i data-icon="clipboard-paste"></i><span id="rpCopyLabel"></span></button>
     </div>
   </form>
 </dialog>
 
-<dialog id="history" class="history">
-  <div class="hist-head">
-    <h2 data-i18n="hist.title"></h2>
-    <button class="icon" id="closeHistory" data-i18n-aria="hist.close" data-i18n-title="hist.close">✕</button>
-  </div>
-  <input type="search" id="histFilter" data-i18n-placeholder="hist.filter">
-  <p class="hint" id="histInfo"></p>
-  <div id="histList" class="hist-list"></div>
-  <div class="row hist-foot">
-    <button id="exportRatings" data-i18n="fb.export" data-i18n-title="fb.exportHint"></button>
-    <span class="hint" id="ratingsInfo"></span>
-    <button id="histDeleteAll" class="danger" data-i18n="hist.deleteAll"></button>
+<!-- ====== Historia ====== -->
+<dialog id="history" class="fc-screen" aria-labelledby="histTitle">
+  <div class="fc-screen__form">
+    <header class="fc-header">
+      <button type="button" class="fc-btn fc-btn--icon" id="closeHistory" data-i18n-title="nav.back" data-i18n-aria="nav.back"><i data-icon="arrow-left"></i></button>
+      <div class="fc-grow"><h2 class="fc-header__name" id="histTitle" data-i18n="hist.title" tabindex="-1" autofocus></h2></div>
+    </header>
+    <div class="fc-panel__scroll">
+      <div class="fc-input-wrap"><i data-icon="search"></i><input type="search" class="fc-input" id="histFilter" data-i18n-placeholder="hist.filter" data-i18n-aria="hist.filter"></div>
+      <p class="fc-t-12 fc-faint hint" id="histInfo"></p>
+      <div id="histList" class="hist-list fc-stack"></div>
+    </div>
+    <div class="fc-sticky-foot hist-foot">
+      <button type="button" id="exportRatings" class="fc-btn fc-btn--secondary fc-btn--sm" data-i18n-title="fb.exportHint"><i data-icon="download"></i><span data-i18n="fb.export"></span></button>
+      <span class="fc-t-12 fc-faint fc-grow hint" id="ratingsInfo"></span>
+      <button type="button" id="histDeleteAll" class="fc-btn fc-btn--ghost fc-btn--sm danger"><i data-icon="trash-2"></i><span data-i18n="hist.deleteAll"></span></button>
+    </div>
   </div>
 </dialog>
 
-<dialog id="sttSetup" class="stt-setup" aria-labelledby="ssTitle">
-  <form method="dialog">
-    <h2 id="ssTitle" data-i18n="ss.title"></h2>
-    <p class="ss-why" id="ssWhy"></p>
+<!-- ====== Zamiana mowy na tekst (arkusz od dołu, przy Start bez gotowego modelu) ====== -->
+<dialog id="sttSetup" class="fc-sheet stt-setup" aria-labelledby="ssTitle">
+  <form method="dialog" class="fc-stack">
+    <div class="fc-row fc-row--nowrap">
+      <h2 id="ssTitle" class="fc-t-16 fc-strong fc-grow" data-i18n="ss.title"></h2>
+      <button value="cancel" class="fc-btn fc-btn--icon" data-i18n-title="ss.close" data-i18n-aria="ss.close"><i data-icon="x"></i></button>
+    </div>
+    <p class="fc-t-13 ss-why" id="ssWhy"></p>
     <section class="ss-opt rec" id="ssLocal">
-      <div class="ss-head"><b data-i18n="ss.local"></b> <span class="ss-badge" data-i18n="ss.recommended"></span></div>
-      <p class="hint" id="ssLocalInfo"></p>
+      <div class="ss-head"><b data-i18n="ss.local"></b> <span class="fc-pill fc-v-true ss-badge" data-i18n="ss.recommended"></span></div>
+      <p class="fc-field__hint" id="ssLocalInfo"></p>
       <progress id="ssProg" hidden></progress>
-      <p class="hint ss-status" id="ssLocalStatus" role="status" hidden></p>
-      <div class="row">
-        <button type="button" class="primary" id="ssDownload"></button>
-        <button type="button" class="link" id="ssLighter" hidden></button>
+      <p class="fc-field__hint ss-status" id="ssLocalStatus" role="status" hidden></p>
+      <div class="fc-row">
+        <button type="button" class="fc-btn fc-btn--primary" id="ssDownload"></button>
+        <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm link" id="ssLighter" hidden></button>
       </div>
     </section>
     <section class="ss-opt" id="ssOpenai">
       <div class="ss-head"><b data-i18n="ss.openai"></b></div>
-      <p class="hint" id="ssOpenaiInfo"></p>
-      <div class="row"><button type="button" id="ssUseOpenai"></button></div>
+      <p class="fc-field__hint" id="ssOpenaiInfo"></p>
+      <div class="fc-row"><button type="button" class="fc-btn fc-btn--secondary" id="ssUseOpenai"></button></div>
     </section>
     <section class="ss-opt" id="ssChrome">
       <div class="ss-head"><b data-i18n="ss.chrome"></b></div>
-      <p class="hint" data-i18n="ss.chromeInfo"></p>
-      <div class="row"><button type="button" id="ssUseChrome" data-i18n="ss.useStart"></button></div>
+      <p class="fc-field__hint" data-i18n="ss.chromeInfo"></p>
+      <div class="fc-row"><button type="button" class="fc-btn fc-btn--secondary" id="ssUseChrome" data-i18n="ss.useStart"></button></div>
     </section>
-    <p class="hint" data-i18n="ss.textNote"></p>
-    <div class="row end">
-      <button type="button" id="ssMore" data-i18n="ss.more"></button>
-      <button value="cancel" data-i18n="ss.close"></button>
+    <p class="fc-field__hint" data-i18n="ss.textNote"></p>
+    <div class="fc-row rp-actions">
+      <button type="button" id="ssMore" class="fc-btn fc-btn--ghost" data-i18n="ss.more"></button>
+      <button value="cancel" class="fc-btn fc-btn--secondary" data-i18n="ss.close"></button>
     </div>
   </form>
 </dialog>
 
 <template id="histTpl">
-  <article class="hist-item">
-    <div class="hist-title"></div>
-    <div class="hist-meta muted"></div>
-    <div class="hist-pills"></div>
-    <div class="row">
-      <button class="primary" data-act="open" data-i18n="hist.open"></button>
-      <button data-act="export" data-i18n="hist.export"></button>
-      <button data-act="report" data-i18n="hist.report"></button>
-      <button class="danger" data-act="delete" data-i18n="hist.delete"></button>
+  <article class="fc-card hist-item">
+    <div class="fc-hist">
+      <div class="fc-hist__title hist-title"></div>
+      <div class="fc-t-12 fc-faint hist-meta"></div>
+      <div class="fc-row hist-pills"></div>
+    </div>
+    <div class="fc-vcard__foot hist-actions">
+      <button type="button" class="fc-btn fc-btn--soft fc-btn--sm" data-act="open"><i data-icon="folder-open"></i><span data-i18n="hist.open"></span></button>
+      <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm" data-act="export"><i data-icon="download"></i><span data-i18n="hist.export"></span></button>
+      <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm" data-act="report"><i data-icon="file-chart-column"></i><span data-i18n="hist.report"></span></button>
+      <span class="fc-grow"></span>
+      <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm danger" data-act="delete" data-i18n-title="hist.delete"><i data-icon="trash-2"></i><span data-i18n="hist.delete"></span></button>
     </div>
   </article>
 </template>
 
 <template id="cardTpl">
-  <article class="card">
-    <div class="card-head">
-      <span class="pill"></span>
-      <span class="conf muted"></span>
-      <time class="muted"></time>
-      <button class="goto" type="button" hidden data-i18n="page.show"></button>
-      <button class="fold icon" type="button" aria-expanded="false"></button>
+  <article class="card fc-vcard">
+    <div class="fc-vcard__head card-head">
+      <div class="fc-stack head-main">
+        <div class="fc-row fc-row--nowrap head-row">
+          <span class="pill fc-pill"></span>
+          <span class="fc-conf conf" role="img"><i></i><i></i><i></i></span>
+          <span class="head-tags fc-row fc-row--nowrap"></span>
+          <time class="fc-vcard__time"></time>
+        </div>
+        <p class="claim fc-vcard__short"></p>
+      </div>
+      <button class="fold fc-btn fc-btn--icon" type="button" aria-expanded="false"><i data-icon="chevron-right" class="fc-vcard__chev"></i></button>
     </div>
-    <p class="recheck-note" role="status" hidden></p>
-    <blockquote class="quote"></blockquote>
-    <div class="claim-label"></div>
-    <p class="claim"></p>
-    <div class="expl-label"></div>
-    <p class="expl"></p>
-    <dl class="more"></dl>
-    <ul class="sources"></ul>
-    <div class="fc-box" hidden></div>
-    <div class="card-foot">
-      <button type="button" class="fb fb-up" aria-pressed="false">👍</button>
-      <button type="button" class="fb fb-down" aria-pressed="false">👎</button>
-      <span class="fb-note muted" hidden></span>
-      <button type="button" class="copy-reply"></button>
+    <div class="fc-vcard__body card-body">
+      <p class="recheck-note fc-note" role="status" hidden></p>
+      <blockquote class="quote fc-quote"></blockquote>
+      <p class="expl fc-t-14"></p>
+      <div class="more"></div>
+      <div class="src-list fc-stack" hidden><span class="fc-label sources-label"></span><ul class="fc-sources sources"></ul></div>
+      <div class="fc-box" hidden></div>
     </div>
-    <div class="fb-box" hidden>
-      <textarea rows="2" maxlength="1000"></textarea>
-      <button type="button" class="fb-done small"></button>
-      <div class="fb-more" hidden>
-        <button type="button" class="recheck small"></button>
-        <label class="recheck-by" hidden><span></span> <select></select></label>
+    <div class="fc-vcard__foot card-foot">
+      <button type="button" class="recheck-open fc-btn fc-btn--ghost fc-btn--sm" aria-expanded="false"><i data-icon="search-check"></i><span class="recheck-open-label"></span></button>
+      <span class="fc-grow"></span>
+      <button type="button" class="goto fc-btn fc-btn--ghost fc-btn--sm" hidden><i data-icon="locate-fixed"></i><span class="goto-label"></span></button>
+      <button type="button" class="copy-reply fc-btn fc-btn--soft fc-btn--sm"><i data-icon="copy"></i><span class="copy-label"></span></button>
+    </div>
+    <div class="fb-box rc-box fc-stack" hidden>
+      <label class="fc-field__label rc-label"></label>
+      <textarea class="fc-textarea" rows="2" maxlength="1000"></textarea>
+      <div class="fc-row rc-actions">
+        <label class="recheck-by fc-t-12 fc-faint" hidden><span></span> <select class="fc-select fc-input--sm"></select></label>
+        <span class="fc-grow"></span>
+        <button type="button" class="rc-cancel fc-btn fc-btn--ghost fc-btn--sm"></button>
+        <button type="button" class="recheck fc-btn fc-btn--primary fc-btn--sm"><i data-icon="search-check"></i><span class="recheck-label"></span></button>
       </div>
     </div>
   </article>

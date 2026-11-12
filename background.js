@@ -2,10 +2,15 @@ import { getAccessToken, getAccount, handleCallback, isCallbackUrl, signOut, sta
 import { initLang, t } from "./lib/i18n.js";
 import { runInTab } from "./lib/capture.js";
 import { attachImages } from "./lib/shot.js";
+import { POST_SCRIPT_FILE, POST_SCRIPT_ID, POST_SITES, SITE_IDS, hasSiteAccess, postSitesOn } from "./lib/postbuttons.js";
 
 // Język komunikatów logowania = język interfejsu (ustawienia albo przeglądarka).
 const langReady = initLang();
-chrome.storage.onChanged.addListener((ch) => { if (ch.settings) initLang().then(setupMenus); });
+chrome.storage.onChanged.addListener((ch) => {
+  if (!ch.settings) return;
+  initLang().then(setupMenus);
+  if (JSON.stringify(postSitesOn(ch.settings.oldValue)) !== JSON.stringify(postSitesOn(ch.settings.newValue))) syncPostButtons();
+});
 
 // Kliknięcie ikony na pasku narzędzi daje wtyczce zgodę (activeTab) na nagrywanie dźwięku tej karty.
 // Chrome: otwieramy panel boczny (chrome.sidePanel).
@@ -15,8 +20,9 @@ chrome.storage.onChanged.addListener((ch) => { if (ch.settings) initLang().then(
 const hasSidePanel = !!chrome.sidePanel?.open;
 const manualPanel = () => { if (hasSidePanel) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {}); };
 manualPanel();
-chrome.runtime.onInstalled.addListener(() => { manualPanel(); setupMenus(); });
-chrome.runtime.onStartup.addListener(manualPanel);
+// Po instalacji/aktualizacji: ikonki przy postach w otwartych kartach zastępujemy nową wersją skryptu.
+chrome.runtime.onInstalled.addListener(() => { manualPanel(); setupMenus(); syncPostButtons({ reinject: true }); });
+chrome.runtime.onStartup.addListener(() => { manualPanel(); syncPostButtons(); });
 
 const PANEL_W = 440;
 async function openPanelWindow(tab) {
@@ -114,11 +120,13 @@ function deliver(payload, tab) {
       lastWindowOpen = Date.now();
       await openPanelWindow(tab).catch((e) => console.error(e));
     }
+    return !!r?.panel; // czy otwarty panel od razu odebrał zlecenie
   });
 }
 // Panel odbiera całą listę naraz (po kolei z dopisywaniem – bez wyścigu).
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type !== "take-captures") return false;
+  clearBadges();
   serial(async () => {
     const { pendingCaptures: list = [] } = await chrome.storage.session.get("pendingCaptures");
     if (list.length) await chrome.storage.session.remove("pendingCaptures");
@@ -203,3 +211,79 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   deliver({ ...(msg.payload || { cancelled: true }), frameId: sender.frameId || 0 }, sender.tab);
   return false;
 });
+
+// ---------- ikonka „sprawdź” przy postach na Facebooku i X (opcja w ustawieniach, domyślnie wyłączona) ----------
+// Osobno dla każdego serwisu: skrypt ikonek (content/buttons.js) działa tylko tam, gdzie opcja jest włączona I jest
+// zgoda przeglądarki na ten serwis. Rejestracja idzie po kolei (jeden łańcuch) – szybkie przełączanie nie zgłasza
+// „Duplicate script ID”.
+let postBtnChain = Promise.resolve();
+const postTabs = (origins) => (origins.length ? chrome.tabs.query({ url: origins }).catch(() => []) : Promise.resolve([]));
+function syncPostButtons({ reinject = false } = {}) {
+  postBtnChain = postBtnChain.then(async () => {
+    const { settings } = await chrome.storage.local.get("settings");
+    const on = postSitesOn(settings);
+    const want = [];
+    for (const id of SITE_IDS) if (on[id] && (await hasSiteAccess(id))) want.push(...POST_SITES[id].origins);
+    const reg = (await chrome.scripting.getRegisteredContentScripts({ ids: [POST_SCRIPT_ID] }).catch(() => []))[0];
+    const have = reg?.matches || [];
+    const added = want.filter((m) => !have.includes(m)), removed = have.filter((m) => !want.includes(m));
+    if (added.length || removed.length) {
+      if (reg) await chrome.scripting.unregisterContentScripts({ ids: [POST_SCRIPT_ID] });
+      if (want.length) await chrome.scripting.registerContentScripts([{ id: POST_SCRIPT_ID, matches: want, js: [POST_SCRIPT_FILE], runAt: "document_idle", persistAcrossSessions: true }]);
+    }
+    // otwarte karty: włączenie działa od razu (bez odświeżania), wyłączenie od razu zdejmuje ikonki
+    for (const tab of await postTabs(reinject ? want : added)) chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [POST_SCRIPT_FILE] }).catch(() => {});
+    for (const tab of await postTabs(removed)) chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__fcButtons?.stop() }).catch(() => {});
+  }).catch((e) => console.error(e));
+  return postBtnChain;
+}
+chrome.permissions.onAdded.addListener(() => syncPostButtons());
+chrome.permissions.onRemoved.addListener(() => syncPostButtons());
+
+// Kliknięcie ikonki: panel otwieramy OD RAZU (Chrome pozwala tylko w reakcji na kliknięcie), post pobiera page.js.
+const badgeTabs = new Set();
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type !== "fc-post-button" || !sender.tab?.id) return false;
+  const tab = sender.tab;
+  const opened = hasSidePanel ? chrome.sidePanel.open({ windowId: tab.windowId }).then(() => true, () => false) : Promise.resolve(true);
+  capturePost(tab, String(msg.token || ""), opened);
+  return false;
+});
+async function capturePost(tab, token, opened) {
+  let took = false;
+  try {
+    const res = await runInTab(tab.id, "postFrom", { token });
+    if (res) took = await deliver({ ...res, frameId: 0 }, tab);
+  } catch (e) {
+    took = await deliver(errorPayload(e, tab), tab);
+  }
+  // Panel nie odebrał zlecenia, a przeglądarka nie dała go otworzyć: post czeka w kolejce – podpowiadamy, gdzie kliknąć.
+  if (!took && !(await opened)) {
+    badgeTabs.add(tab.id);
+    chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: "#1f4fd1" }).catch(() => {});
+    chrome.action.setBadgeText({ tabId: tab.id, text: "1" }).catch(() => {});
+    runInTab(tab.id, "toast", { text: `Fact Checker: ${t("page.openPanel")}` }).catch(() => {});
+  }
+}
+// Przyciski w ramce wyniku pod postem („Kopiuj jako odpowiedź”, „Szczegóły w panelu”): panel otwieramy od razu
+// (kliknięcie = gest użytkownika), potem przekazujemy mu, o który post chodzi.
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type !== "fc-inject-act" || !sender.tab?.id) return false;
+  const tab = sender.tab;
+  if (hasSidePanel) chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => {});
+  forwardInjectAct(tab, msg);
+  return false;
+});
+async function forwardInjectAct(tab, msg) {
+  const fwd = { type: "inject-act", act: msg.act, captureId: msg.captureId, tabId: tab.id };
+  let r = await chrome.runtime.sendMessage(fwd).catch(() => null);
+  if (!r?.panel && !hasSidePanel) await openPanelWindow(tab).catch((e) => console.error(e));
+  for (let i = 0; i < 12 && !r?.panel; i++) { // panel dopiero się otwiera
+    await new Promise((ok) => setTimeout(ok, 500));
+    r = await chrome.runtime.sendMessage(fwd).catch(() => null);
+  }
+}
+function clearBadges() {
+  for (const id of badgeTabs) chrome.action.setBadgeText({ tabId: id, text: "" }).catch(() => {});
+  badgeTabs.clear();
+}

@@ -93,16 +93,16 @@ test("„Sprawdź dokładniej”: jedno twierdzenie, tryb dokładny, zarzut jako
   assert.deepEqual(body.tools, [{ type: "web_search" }]);
   assert.equal(body._fc.maxSearches, 8);
   assert.match(body.instructions, /Re-check ONE claim from scratch/);
-  assert.match(body.instructions, /do not change it only because the reader objects/);
+  assert.match(body.instructions, /do not change it only because the reader asked or objected/);
   assert.match(body.instructions, /Thorough mode/);
   assert.match(body.instructions, /as of 2026-11-10/);
   const input = body.input[0].content;
   assert.match(input, /CLAIM TO RE-CHECK: Bezrobocie wynosi 2,9%/);
   assert.match(input, /EARLIER VERDICT: false/);
-  assert.match(input, /READER'S OBJECTION: GUS podaje 2,9% – to inna metoda/);
+  assert.match(input, /READER'S NOTE: GUS podaje 2,9% – to inna metoda/);
   assert.match(input, /CONTEXT AROUND THE QUOTE:\n"""\n…a+ Bezrobocie wynosi 2,9 procent według GUS\. b+…/);
   assert.ok(input.length < 2400);
-  assert.match(buildRecheckRequest({ model: "m", today: "2026-11-12", webSearch: false, claim, src: { kind: "tab" } }).input[0].content, /READER'S OBJECTION: \(none given/);
+  assert.match(buildRecheckRequest({ model: "m", today: "2026-11-12", webSearch: false, claim, src: { kind: "tab" } }).input[0].content, /READER'S NOTE: \(none given/);
   assert.equal(contextAround("abc", "zzz"), "");
   assert.equal(contextAround("", "a"), "");
 });
@@ -118,6 +118,24 @@ test("eksport ocen: ocena sprzed „Sprawdź dokładniej” dotyczy poprzedniego
   const [after] = ratedClaims([rec({ rating: 1, comment: "", at: 6000 })]);
   assert.equal(after.verdict, "polprawda");
   assert.equal(after.model, "g");
+});
+
+test("eksport: „Sprawdź dokładniej” bez oceny 👍/👎 – uwaga czytelnika, werdykt przed i po", () => {
+  const c = { id: "k2", srcId: "s1", t: 1000, claim: "Nowe", quote: "q", verdict: "prawda", confidence: "wysoka", explanation: "Po", provider: "gemini", model: "g", mode: "thorough",
+    recheck: { at: 7000, provider: "gemini", model: "g", note: "inna metoda GUS", prev: { verdict: "falsz", confidence: "srednia", claim: "Stare", explanation: "Przed", provider: "apikey", model: "gpt", mode: "normal" } } };
+  const plain = { id: "k3", srcId: "s1", t: 900, claim: "Zwykłe", quote: "z", verdict: "prawda", confidence: "wysoka" };
+  const out = ratedClaims([{ id: "x", startedAt: 1, sources: [{ id: "s1", kind: "post", text: "t" }], claims: [c, plain] }]);
+  assert.equal(out.length, 1);
+  const [r] = out;
+  assert.equal(r.rating, "recheck");
+  assert.equal(r.comment, "inna metoda GUS");
+  assert.equal(r.rated_at, new Date(7000).toISOString());
+  assert.equal(r.verdict, "falsz");
+  assert.equal(r.model, "gpt");
+  assert.deepEqual([r.recheck.verdict_before, r.recheck.verdict_after, r.recheck.explanation_after], ["falsz", "prawda", "Po"]);
+  // ten sam werdykt wczytany z pamięci w kolejnej sesji – w eksporcie raz
+  const two = ratedClaims([{ id: "x", startedAt: 1, sources: [{ id: "s1", kind: "post", text: "t" }], claims: [c] }, { id: "y", startedAt: 2, sources: [{ id: "s1", kind: "post", text: "t" }], claims: [{ ...c, fromMemory: true }] }]);
+  assert.equal(two.length, 1);
 });
 
 test("raport i Markdown: chwyty, licznik przy mówcy, poziom źródła, gatunek", () => {
