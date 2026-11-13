@@ -179,7 +179,7 @@
     b.type = "button";
     b.className = cls;
     stopAll(b);
-    b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
+    b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (!e.isTrusted) return; onClick(); });
     sh.append(st, b);
     return { h, b };
   }

@@ -168,6 +168,7 @@
     b.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (!e.isTrusted) return;
       if (hover.root) press(hover.root);
     });
     sh.append(st, b);
@@ -257,6 +258,7 @@
     p.shadow.innerHTML = `<style>${css}</style>${html}`; // HTML z panelu wtyczki – dane już jako tekst
     p.shadow.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", (e) => {
       e.preventDefault();
+      if (!e.isTrusted) return;
       const act = b.dataset.act;
       if (act === "close") { setState(root, "hidden"); return; }
       if (!alive()) { note(L().reload); return; }

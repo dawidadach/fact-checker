@@ -84,7 +84,7 @@
     if (float) b.className = "float";
     // kliknięcie i klawisze nie mogą dojść do odtwarzacza (pauza, skróty klawiszowe YouTube)
     for (const ev of ["pointerdown", "mousedown", "pointerup", "mouseup", "dblclick", "auxclick", "keydown", "keyup"]) b.addEventListener(ev, (e) => e.stopPropagation());
-    b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); press(); });
+    b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (!e.isTrusted) return; press(); });
     sh.append(st, b);
     btn = { h, b, float };
     paint();
