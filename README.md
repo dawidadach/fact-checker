@@ -5,6 +5,8 @@ ready reply to paste. It also checks debates and podcasts live.
 
 Developed by [Dawid Adach](https://github.com/dawidadach) and [Wojciech Kałużny](https://github.com/wojciechkaluzny-ctrl) · Projekt rozwijają Dawid Adach i Wojciech Kałużny.
 
+Website · Strona projektu: **[factchecker.pl](https://factchecker.pl)**
+
 **[English](#english) · [Polski](#polski)**
 
 ### Install in 1 minute
@@ -39,6 +41,8 @@ Privacy: **[PRIVACY.md](PRIVACY.md)**
 ---
 
 ## English
+
+Website: **[factchecker.pl](https://factchecker.pl)** – features, screenshots and downloads in one place.
 
 A browser extension (Chrome, Edge, Opera) that checks what you read and watch, in a side panel:
 
@@ -269,6 +273,8 @@ against stubbed servers. If something fails, right-click the panel → **Inspect
 ---
 
 ## Polski
+
+Strona projektu: **[factchecker.pl](https://factchecker.pl)** – funkcje, zrzuty ekranu i pobieranie w jednym miejscu.
 
 ![Post na Facebooku sprawdzony w Operze jednym kliknięciem ikonki przy „…”: twierdzenia podkreślone w tekście kolorem werdyktu, a w panelu ocena całości – co się zgadza, co jest fałszywe i czego brakuje](docs/demo-pl-post.webp)
 
