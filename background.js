@@ -3,6 +3,10 @@ import { initLang, t } from "./lib/i18n.js";
 import { runInTab } from "./lib/capture.js";
 import { attachImages } from "./lib/shot.js";
 import { POST_SCRIPT_FILE, POST_SCRIPT_ID, POST_SITES, SITE_IDS, hasSiteAccess, postSitesOn } from "./lib/postbuttons.js";
+import {
+  ARTICLE_EXCLUDE, ARTICLE_SCRIPT_FILE, ARTICLE_SCRIPT_ID, MARKS_KEY, articleConfig, articleKey, covered, findMark, markView, urlMatches, wantedOrigins,
+} from "./lib/articlebuttons.js";
+import { MEDIA_ORIGINS, MEDIA_SCRIPT_FILE, MEDIA_SCRIPT_ID, hasMediaAccess, mediaOn } from "./lib/mediabuttons.js";
 
 // Język komunikatów logowania = język interfejsu (ustawienia albo przeglądarka).
 const langReady = initLang();
@@ -10,7 +14,10 @@ chrome.storage.onChanged.addListener((ch) => {
   if (!ch.settings) return;
   initLang().then(setupMenus);
   if (JSON.stringify(postSitesOn(ch.settings.oldValue)) !== JSON.stringify(postSitesOn(ch.settings.newValue))) syncPostButtons();
+  if (artSig(ch.settings.oldValue) !== artSig(ch.settings.newValue)) syncArticleButtons();
+  if (mediaOn(ch.settings.oldValue) !== mediaOn(ch.settings.newValue)) syncMediaButtons();
 });
+const artSig = (s) => JSON.stringify(wantedOrigins(articleConfig(s)));
 
 // Kliknięcie ikony na pasku narzędzi daje wtyczce zgodę (activeTab) na nagrywanie dźwięku tej karty.
 // Chrome: otwieramy panel boczny (chrome.sidePanel).
@@ -21,8 +28,8 @@ const hasSidePanel = !!chrome.sidePanel?.open;
 const manualPanel = () => { if (hasSidePanel) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {}); };
 manualPanel();
 // Po instalacji/aktualizacji: ikonki przy postach w otwartych kartach zastępujemy nową wersją skryptu.
-chrome.runtime.onInstalled.addListener(() => { manualPanel(); setupMenus(); syncPostButtons({ reinject: true }); });
-chrome.runtime.onStartup.addListener(() => { manualPanel(); syncPostButtons(); });
+chrome.runtime.onInstalled.addListener(() => { manualPanel(); setupMenus(); syncPostButtons({ reinject: true }); syncArticleButtons({ reinject: true }); syncMediaButtons({ reinject: true }); });
+chrome.runtime.onStartup.addListener(() => { manualPanel(); syncPostButtons(); syncArticleButtons(); syncMediaButtons(); });
 
 const PANEL_W = 440;
 async function openPanelWindow(tab) {
@@ -147,11 +154,13 @@ async function captureSelection(tab, frameId = 0, fallbackText = "") {
   if (fallbackText) return deliver({ kind: "selection", text: fallbackText, meta: { title: tab.title, url: tab.url, pageUrl: tab.url }, captureId: null }, tab);
   return null;
 }
-async function captureArticle(tab) {
+async function captureArticle(tab, { via = "" } = {}) {
   try {
-    deliver({ ...(await runInTab(tab.id, "article", {}, { readability: true })), frameId: 0 }, tab);
+    return await deliver({ ...(await runInTab(tab.id, "article", {}, { readability: true })), ...(via ? { via } : {}), frameId: 0 }, tab);
   } catch (e) {
-    deliver(errorPayload(e, tab), tab);
+    // ikonka przy tytule czeka na wynik – nie będzie go (np. strona bez treści artykułu)
+    if (via === "article") chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__fcArticles?.mark?.({ reset: true }) }).catch(() => {});
+    return deliver(errorPayload(e, tab), tab);
   }
 }
 async function startArea(tab) {
@@ -237,8 +246,103 @@ function syncPostButtons({ reinject = false } = {}) {
   }).catch((e) => console.error(e));
   return postBtnChain;
 }
-chrome.permissions.onAdded.addListener(() => syncPostButtons());
-chrome.permissions.onRemoved.addListener(() => syncPostButtons());
+chrome.permissions.onAdded.addListener(() => { syncPostButtons(); syncArticleButtons(); syncMediaButtons(); });
+chrome.permissions.onRemoved.addListener(() => { syncPostButtons(); syncArticleButtons(); syncMediaButtons(); });
+
+// Rejestracja skryptu na stronach (ikonki przy artykułach, w filmach): want = wzorce adresów, na których ma działać.
+// Otwarte karty: włączenie działa od razu (bez odświeżania), wyłączenie od razu zdejmuje ikonki (stop).
+async function syncScript({ id, file, want, exclude = [], stop, reinject = false }) {
+  const reg = (await chrome.scripting.getRegisteredContentScripts({ ids: [id] }).catch(() => []))[0];
+  const have = reg?.matches || [];
+  const added = want.filter((m) => !have.includes(m)), removed = have.filter((m) => !want.includes(m));
+  if (added.length || removed.length) {
+    if (reg) await chrome.scripting.unregisterContentScripts({ ids: [id] });
+    if (want.length) {
+      await chrome.scripting.registerContentScripts([{
+        id, matches: want, ...(exclude.length ? { excludeMatches: exclude } : {}), js: [file], runAt: "document_idle", persistAcrossSessions: true,
+      }]);
+    }
+  }
+  const hit = (url, list) => list.some((m) => urlMatches(m, url)) && !exclude.some((m) => urlMatches(m, url));
+  for (const tab of await chrome.tabs.query({}).catch(() => [])) {
+    if (!tab.id || !tab.url) continue;
+    if (hit(tab.url, want)) {
+      if (reinject || hit(tab.url, added)) chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [file] }).catch(() => {});
+    } else if (hit(tab.url, removed)) {
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, func: stop }).catch(() => {});
+    }
+  }
+}
+
+// ---------- ikonka „sprawdź” przy tytułach artykułów (opcja w ustawieniach, domyślnie wyłączona) ----------
+// Skrypt ikonek (content/articles.js) działa tylko na serwisach z włączonej listy (albo wszędzie, jeśli tak
+// ustawisz) I tam, gdzie jest zgoda przeglądarki. Ten sam łańcuch co przy postach – bez „Duplicate script ID”.
+let artChain = Promise.resolve();
+function syncArticleButtons({ reinject = false } = {}) {
+  artChain = artChain.then(async () => {
+    const { settings } = await chrome.storage.local.get("settings");
+    const granted = (await chrome.permissions.getAll().catch(() => ({}))).origins || [];
+    const want = wantedOrigins(articleConfig(settings)).filter((o) => covered(o, granted));
+    await syncScript({ id: ARTICLE_SCRIPT_ID, file: ARTICLE_SCRIPT_FILE, want, exclude: ARTICLE_EXCLUDE, reinject, stop: () => globalThis.__fcArticles?.stop() });
+  }).catch((e) => console.error(e));
+  return artChain;
+}
+
+// ---------- ikonka „słuchaj tego filmu” w odtwarzaczu YouTube (opcja w ustawieniach, domyślnie wyłączona) ----------
+let mediaChain = Promise.resolve();
+function syncMediaButtons({ reinject = false } = {}) {
+  mediaChain = mediaChain.then(async () => {
+    const { settings } = await chrome.storage.local.get("settings");
+    const want = mediaOn(settings) && (await hasMediaAccess()) ? [...MEDIA_ORIGINS] : [];
+    await syncScript({ id: MEDIA_SCRIPT_ID, file: MEDIA_SCRIPT_FILE, want, reinject, stop: () => globalThis.__fcMedia?.stop() });
+  }).catch((e) => console.error(e));
+  return mediaChain;
+}
+// Kliknięcie ikonki w odtwarzaczu: panel otwieramy OD RAZU (gest użytkownika) i każemy mu słuchać tej karty –
+// panel łączy się ze skryptem ikonki przez port i dostaje dźwięk filmu.
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type !== "fc-media-listen" || !sender.tab?.id || sender.frameId) return false;
+  const tab = sender.tab;
+  if (hasSidePanel) chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => {});
+  askPanel(tab, { type: "page-listen", tabId: tab.id }, { tries: 20 }).then((r) => {
+    if (!r?.panel) chrome.tabs.sendMessage(tab.id, { type: "fc-media-cancel", reason: "noPanel" }).catch(() => {});
+  });
+  return false;
+});
+// Kliknięcie ikonki przy tytule: panel otwieramy OD RAZU (gest użytkownika), artykuł pobiera page.js – jak „Sprawdź
+// artykuł” w menu. Kliknięcie znaczka z oceną: szczegóły w panelu, a gdy wyniku nie ma w bieżącej sesji – sprawdzenie
+// od nowa (z pamięci werdyktów: od razu i bez kosztów).
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type !== "fc-article-button" || !sender.tab?.id || sender.frameId) return false;
+  const tab = sender.tab;
+  const opened = hasSidePanel ? chrome.sidePanel.open({ windowId: tab.windowId }).then(() => true, () => false) : Promise.resolve(true);
+  articleButton(tab, msg, opened);
+  return false;
+});
+async function articleButton(tab, msg, opened) {
+  if (msg.act === "panel" && msg.captureId) {
+    const r = await forwardInjectAct(tab, { act: "panel", captureId: String(msg.captureId) });
+    if (r?.found) return;
+  }
+  const took = await captureArticle(tab, { via: "article" });
+  if (!took && !(await opened)) waitingBadge(tab);
+}
+// Ocena zapamiętana przy wcześniejszym sprawdzeniu artykułu (tylko adres → ocena; wygasa z pamięcią werdyktów).
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg?.type !== "fc-article-mark-get" || !sender.tab?.id) return false;
+  lookupMark(msg).then((mark) => reply({ mark }), () => reply({ mark: null }));
+  return true;
+});
+async function lookupMark({ url = "", canonical = "" } = {}) {
+  const { settings, [MARKS_KEY]: marks } = await chrome.storage.local.get(["settings", MARKS_KEY]);
+  const days = Number(settings?.memoryDays ?? 30);
+  if (!(days > 0) || !marks) return null;
+  const m = findMark(marks, [articleKey(url), articleKey(canonical)], { maxAgeDays: days });
+  if (!m) return null;
+  await langReady;
+  const v = markView(m, t);
+  return v && { ...v, at: m.at || 0 };
+}
 
 // Kliknięcie ikonki: panel otwieramy OD RAZU (Chrome pozwala tylko w reakcji na kliknięcie), post pobiera page.js.
 const badgeTabs = new Set();
@@ -257,13 +361,14 @@ async function capturePost(tab, token, opened) {
   } catch (e) {
     took = await deliver(errorPayload(e, tab), tab);
   }
-  // Panel nie odebrał zlecenia, a przeglądarka nie dała go otworzyć: post czeka w kolejce – podpowiadamy, gdzie kliknąć.
-  if (!took && !(await opened)) {
-    badgeTabs.add(tab.id);
-    chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: "#1f4fd1" }).catch(() => {});
-    chrome.action.setBadgeText({ tabId: tab.id, text: "1" }).catch(() => {});
-    runInTab(tab.id, "toast", { text: `Fact Checker: ${t("page.openPanel")}` }).catch(() => {});
-  }
+  if (!took && !(await opened)) waitingBadge(tab);
+}
+// Panel nie odebrał zlecenia, a przeglądarka nie dała go otworzyć: zlecenie czeka w kolejce – podpowiadamy, gdzie kliknąć.
+function waitingBadge(tab) {
+  badgeTabs.add(tab.id);
+  chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: "#1f4fd1" }).catch(() => {});
+  chrome.action.setBadgeText({ tabId: tab.id, text: "1" }).catch(() => {});
+  runInTab(tab.id, "toast", { text: `Fact Checker: ${t("page.openPanel")}` }).catch(() => {});
 }
 // Przyciski w ramce wyniku pod postem („Kopiuj jako odpowiedź”, „Szczegóły w panelu”): panel otwieramy od razu
 // (kliknięcie = gest użytkownika), potem przekazujemy mu, o który post chodzi.
@@ -274,14 +379,16 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   forwardInjectAct(tab, msg);
   return false;
 });
-async function forwardInjectAct(tab, msg) {
-  const fwd = { type: "inject-act", act: msg.act, captureId: msg.captureId, tabId: tab.id };
-  let r = await chrome.runtime.sendMessage(fwd).catch(() => null);
+const forwardInjectAct = (tab, msg) => askPanel(tab, { type: "inject-act", act: msg.act, captureId: msg.captureId, tabId: tab.id });
+// Wiadomość do panelu; gdy go nie ma – Opera: otwieramy okienko; Chrome/Edge: panel właśnie się otwiera – ponawiamy.
+async function askPanel(tab, msg, { tries = 12 } = {}) {
+  let r = await chrome.runtime.sendMessage(msg).catch(() => null);
   if (!r?.panel && !hasSidePanel) await openPanelWindow(tab).catch((e) => console.error(e));
-  for (let i = 0; i < 12 && !r?.panel; i++) { // panel dopiero się otwiera
+  for (let i = 0; i < tries && !r?.panel; i++) {
     await new Promise((ok) => setTimeout(ok, 500));
-    r = await chrome.runtime.sendMessage(fwd).catch(() => null);
+    r = await chrome.runtime.sendMessage(msg).catch(() => null);
   }
+  return r;
 }
 function clearBadges() {
   for (const id of badgeTabs) chrome.action.setBadgeText({ tabId: id, text: "" }).catch(() => {});

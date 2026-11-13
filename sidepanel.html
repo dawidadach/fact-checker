@@ -225,6 +225,35 @@
         </div>
       </details>
 
+      <details class="fc-acc" id="accArticles">
+        <summary><span class="fc-acc__icon"><i data-icon="newspaper"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.articles"></span><span class="fc-t-12 fc-faint acc-hint" id="hintArticles"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <span class="fc-field__label" data-i18n="set.articleButtons"></span>
+          <div class="fc-stack radios" role="radiogroup" data-i18n-aria="set.articles">
+            <label class="fc-radio"><input type="radio" name="articleMode" value="off"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.articleMode.off"></span></label>
+            <label class="fc-radio"><input type="radio" name="articleMode" value="list"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.articleMode.list"></span></label>
+            <label class="fc-radio"><input type="radio" name="articleMode" value="all"><span class="fc-radio__dot"></span><span class="fc-grow" data-i18n-split="set.articleMode.all"></span></label>
+          </div>
+          <span class="fc-field__hint" data-i18n="set.articleButtonsHint"></span>
+          <span class="fc-field__hint" id="articleInfo" hidden></span>
+          <div class="fc-stack art-sites" id="articleSites" hidden>
+            <div class="fc-row art-here" id="articleHere" hidden></div>
+            <div class="art-groups" id="articleGroups"></div>
+            <div class="fc-stack art-custom" id="articleCustom" hidden></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="fc-acc" id="accMedia">
+        <summary><span class="fc-acc__icon"><i data-icon="play"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.media"></span><span class="fc-t-12 fc-faint acc-hint" id="hintMedia"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
+        <div class="fc-acc__body">
+          <div class="fc-field">
+            <label class="fc-switch-row"><input type="checkbox" class="fc-check" id="mediaButtonsYt"><span data-i18n="set.mediaButtonsYt"></span></label>
+            <span class="fc-field__hint" data-i18n="set.mediaHint"></span>
+            <span class="fc-field__hint" id="mediaInfo" hidden></span></div>
+        </div>
+      </details>
+
       <details class="fc-acc" id="accCosts">
         <summary><span class="fc-acc__icon"><i data-icon="coins"></i></span><span class="fc-grow"><span class="fc-strong fc-t-14 acc-title" data-i18n="set.costs"></span><span class="fc-t-12 fc-faint acc-hint" id="hintCosts"></span></span><i data-icon="chevron-right" class="fc-acc__chev"></i></summary>
         <div class="fc-acc__body">

@@ -5,9 +5,14 @@ import { scamHint, scamSignals } from "./lib/scam.js";
 import { certInfoStored, certList, lookup as certLookup } from "./lib/certlist.js";
 import { PageAccessError, runInTab, sameUrl } from "./lib/capture.js";
 import { POST_SITES, SITE_IDS, hasSiteAccess, postSitesOn } from "./lib/postbuttons.js";
+import {
+  ALL_ORIGINS, ARTICLE_GROUPS, ARTICLE_SITES, MARKS_KEY, addMark, articleConfig, articleKey, articleSite, cleanHost, covered,
+  customOrigins, markView, siteOfHost, wantedOrigins,
+} from "./lib/articlebuttons.js";
 import { hydrateIcons, icon } from "./lib/icons.js";
 import { callModel, KEY_PROVIDERS, listProviderModels, PROVIDERS, providerName } from "./lib/providers.js";
-import { LocalTranscriber, localEngine, MicTranscriber, TabTranscriber } from "./lib/transcribe.js";
+import { connectPageAudio, LocalTranscriber, localEngine, MicTranscriber, TabTranscriber } from "./lib/transcribe.js";
+import { MEDIA_KEY, MEDIA_ORIGINS, hasMediaAccess, mediaOn } from "./lib/mediabuttons.js";
 import { deleteModel, detectDevice, getDownloaded, getModel, LANGS, MODELS, storageEstimate } from "./lib/models.js";
 import { applyI18n, getLang, resolveLang, setLang, t } from "./lib/i18n.js";
 import {
@@ -98,6 +103,10 @@ const DEFAULTS = {
   saveHistory: true,     // zapis sesji w historii (wyłączone: wyniki znikają po zamknięciu panelu)
   // ikonka „sprawdź” przy postach: postButtonsFb / postButtonsX (osobna zgoda przeglądarki na każdy serwis);
   // brak wartości → stara wspólna opcja postButtons (lib/postbuttons.js: postSitesOn)
+  articleButtons: "off", // ikonka przy tytułach artykułów: off | list (serwisy z listy) | all (wszędzie)
+  articleSitesOff: [],   // serwisy z listy odznaczone przez Ciebie (lib/articlebuttons.js)
+  articleCustom: [],     // serwisy dodane przez Ciebie („Pokazuj ikonkę na tej stronie”)
+  mediaButtonsYt: false, // ikonka „słuchaj tego filmu” w odtwarzaczu YouTube (lib/mediabuttons.js)
 };
 const SECRET_KEYS = ["apiKey", "keys"]; // to, co przy „nie zapamiętuj kluczy” trafia tylko do pamięci sesji przeglądarki
 let DEVICE = "cpu";
@@ -457,6 +466,9 @@ function fillSettingsForm() {
   const sites = postSitesOn(S);
   for (const id of SITE_IDS) $(POST_SITES[id].key).checked = sites[id];
   renderPostButtonsInfo();
+  renderArticleSettings();
+  $("mediaButtonsYt").checked = mediaOn(S);
+  renderMediaInfo();
   $("saveHistory").checked = S.saveHistory !== false;
   $("rememberKeys").checked = S.rememberKeys !== false;
   renderMemInfo();
@@ -490,6 +502,9 @@ function renderAccHints() {
   $("hintMode").textContent = radioName("mode");
   const postsOn = SITE_IDS.filter((id) => $(POST_SITES[id].key).checked).map((id) => t(`set.postSite.${id}`));
   $("hintPosts").textContent = postsOn.length ? postsOn.join(" · ") : t("hint.off");
+  const art = articleConfig(S);
+  $("hintMedia").textContent = $("mediaButtonsYt").checked ? "YouTube" : t("hint.off");
+  $("hintArticles").textContent = art.mode === "all" ? t("set.articleHint.all") : art.mode === "list" ? t("set.articleHint.list", { n: art.sites.length + art.custom.length }) : t("hint.off");
   const lang = getLang();
   const lim = Number(String($("dailyLimit").value).replace(",", ".")) || 0;
   $("hintCosts").textContent = [t("hint.today", { cost: fmtUsd(dayUsage.cost, lang) }), lim > 0 ? t("hint.limit", { limit: fmtUsd(lim, lang) }) : ""].filter(Boolean).join(" · ");
@@ -526,6 +541,7 @@ function readSettingsForm() {
   S.scamCheck = $("scamCheck").checked;
   S.certList = $("certList").checked;
   for (const id of SITE_IDS) S[POST_SITES[id].key] = $(POST_SITES[id].key).checked;
+  S[MEDIA_KEY] = $("mediaButtonsYt").checked;
   S.saveHistory = $("saveHistory").checked;
   S.rememberKeys = $("rememberKeys").checked;
   S.sessionGapH = clamp(Number($("sessionGap").value) || 0, 0, 72);
@@ -931,6 +947,7 @@ function renderGroupHead(g) {
   arrangeCards(g, mine);
   g.querySelectorAll(".cards .card").forEach((n) => n._paint?.());
   if (src.via === "button") injectUpdate(src);
+  if (src.kind === "article") articleMarkUpdate(src);
 }
 // ---------- ocena całości (lib/summary.js) ----------
 // Artykuł, post, mem, infografika: poziom (5 nazwanych stopni), jedno-dwa zdania i punkty ✓ ✗ ⚠ nad kartami.
@@ -1687,8 +1704,51 @@ function injectUpdate(src) {
 }
 // Post z przycisku nie zostanie sprawdzony (anulowany podgląd, duplikat, błąd) – przycisk wraca do „Sprawdź fakty”.
 function injectReset(p) {
+  if (p?.via === "article" && p.tabId != null) { sendArticleMark(p.tabId, { url: p.meta?.url || p.url || "", reset: true }); return; }
   if (p?.via !== "button" || p.tabId == null || !p.captureId) return;
   runInTab(p.tabId, "injectResult", { captureId: p.captureId, reset: true }, { frameId: p.frameId || 0 }).catch(() => {});
+}
+
+// ---------- znaczek z oceną przy tytule artykułu (ikonki przy artykułach – content/articles.js) ----------
+// Po sprawdzeniu artykułu ocena całości (albo werdykt, gdy twierdzenie jest jedno) staje przy jego tytule na stronie.
+// Gdy pamięć werdyktów jest włączona, trafia też na krótką listę „adres → ocena” (bez treści) – przy kolejnej wizycie
+// znaczek wraca od razu. Lista wygasa razem z pamięcią werdyktów i czyści się razem z nią.
+const markSent = new Map(); // srcId → podpis ostatnio wysłanej oceny
+let markChain = Promise.resolve();
+function articleMarkOf(src, claims) {
+  if (activity.on && activity.srcId === src.id) return null; // jeszcze sprawdzamy
+  const st = summaryState(src, claims);
+  if (st?.status === "pending") return null; // ocena całości w drodze
+  if (st?.status === "ready") return { level: st.s.level, n: claims.length };
+  if (!claims.length) return { n: 0 };
+  const worst = [...claims].sort((a, b) => severityRank(a.verdict) - severityRank(b.verdict))[0];
+  return { verdict: worst.verdict, n: claims.length };
+}
+function articleMarkUpdate(src) {
+  if (src?.kind !== "article" || !src.url) return;
+  const claims = state.claims.filter((c) => c.srcId === src.id);
+  const m = articleMarkOf(src, claims);
+  if (!m) return;
+  const sig = `${getLang()}|${JSON.stringify(m)}`;
+  if (markSent.get(src.id) === sig) return;
+  markSent.set(src.id, sig);
+  if (S.memoryDays > 0) saveArticleMark(src, { ...m, at: src.fromMemory?.at || src.at || Date.now() });
+  if (src.tabId == null) return;
+  const v = markView(m, t);
+  sendArticleMark(src.tabId, { url: src.url, label: v.label, tone: v.tone, captureId: src.captureId || "" });
+}
+function saveArticleMark(src, mark) {
+  const keys = [articleKey(src.url), articleKey(src.meta?.canonical || "")];
+  markChain = markChain.then(async () => {
+    const { [MARKS_KEY]: marks } = await chrome.storage.local.get(MARKS_KEY);
+    await chrome.storage.local.set({ [MARKS_KEY]: addMark(marks, keys, mark, { maxAgeDays: S.memoryDays }) });
+  }).catch((e) => console.warn(e));
+}
+// Tylko do karty, która wciąż pokazuje ten artykuł; bez skryptu ikonek na stronie – nic się nie dzieje.
+async function sendArticleMark(tabId, data) {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab || !sameUrl(tab.url, data.url)) return;
+  chrome.scripting.executeScript({ target: { tabId }, func: (a) => !!globalThis.__fcArticles?.mark?.(a), args: [data] }).catch(() => {});
 }
 
 // ---------- „Sprawdź dokładniej” ----------
@@ -2642,12 +2702,26 @@ function handleError(e) {
 }
 
 // ---------- start / stop ----------
-async function start() {
+// page = { tabId } – słuchanie filmu po kliknięciu ikonki w odtwarzaczu YouTube: dźwięk prosto z filmu (content/media.js),
+// bez dźwięku karty i bez okna wyboru karty.
+async function start({ page = null } = {}) {
   banner(null);
+  if (page) { const r = document.querySelector("input[name=src][value=tab]"); if (r) r.checked = true; }
   S.src = document.querySelector("input[name=src]:checked").value;
   await saveSettings();
   const why = await sttProblem();
-  if (why) { await openSttSetup(why); return; }
+  // brak modelu mowy: okienko ustawień; film czeka (ikonka się kręci) i ruszy po „Zacznij słuchać”
+  if (why) { if (page) state.pendingPage = { ...page, at: Date.now() }; await openSttSetup(why); return; }
+  if (!page && state.pendingPage && Date.now() - state.pendingPage.at < 3 * 60_000 && S.src === "tab") page = state.pendingPage;
+  state.pendingPage = null;
+  const pageStream = async () => {
+    tabInfo = await chrome.tabs.get(page.tabId);
+    state.pageAudio = await connectPageAudio(page.tabId, {
+      onSilent: () => banner(esc(t("err.pageSilent"))),
+      onEnd: () => { if (state.running) stop(); },
+    });
+    return state.pageAudio.stream;
+  };
   const common = {
     language: S.language,
     onText: addText,
@@ -2674,7 +2748,9 @@ async function start() {
           if (backlog >= 3) banner(esc(t("err.slow", { ms: (ms / 1000).toFixed(1), sec: audioSec.toFixed(0) })));
         },
       });
-      if (S.src === "tab") {
+      if (page) {
+        await state.transcriber.start({ stream: await pageStream() });
+      } else if (S.src === "tab") {
         const tab = await targetTab();
         if (!tab) throw new Error(t("err.noActiveTab"));
         tabInfo = tab;
@@ -2685,15 +2761,21 @@ async function start() {
     } else if (S.src === "tab" && S.engine === "openai") {
       if (!S.apiKey) {
         banner(`${esc(t("err.needKeyTab"))}${openSettingsLink("err.addKey")} ${esc(t("err.orMic"))}`, "error");
+        cancelPage(page);
         return;
       }
-      const tab = await targetTab();
-      if (!tab) throw new Error(t("err.noActiveTab"));
-      tabInfo = tab;
       state.transcriber = new TabTranscriber({ ...common, apiKey: S.apiKey, model: S.sttModel, chunkSec: S.chunkSec });
-      await state.transcriber.start(tab.id);
+      if (page) {
+        await state.transcriber.start({ stream: await pageStream() });
+      } else {
+        const tab = await targetTab();
+        if (!tab) throw new Error(t("err.noActiveTab"));
+        tabInfo = tab;
+        await state.transcriber.start(tab.id);
+      }
     } else if (S.src === "tab") {
       banner(esc(t("err.chromeMicOnly")), "error");
+      cancelPage(page);
       return;
     } else if (S.engine === "openai") {
       banner(esc(t("err.openaiTabOnly")), "error");
@@ -2704,6 +2786,9 @@ async function start() {
     }
   } catch (e) {
     state.transcriber = null;
+    state.pageAudio?.stop();
+    state.pageAudio = null;
+    cancelPage(page);
     if (e.name === "NotAllowedError" && S.src === "mic") {
       banner(esc(t("err.micPermission")), "error");
       chrome.tabs.create({ url: chrome.runtime.getURL("mic-permission.html") });
@@ -2749,6 +2834,8 @@ async function stop() {
   clearInterval(state.timer);
   state.transcriber?.stop();
   state.transcriber = null;
+  state.pageAudio?.stop(); // ikonka w odtwarzaczu wraca do „słuchaj”
+  state.pageAudio = null;
   $("interim").textContent = "";
   setToggle(false);
   $("liveDot").className = "fc-dot";
@@ -2762,6 +2849,16 @@ async function stop() {
   await runCheck({ force: true });
   await saveSessionNow();
   if (S.autoExport && session.id && hasContent(stateContent())) downloadMarkdown(snapshot()).catch((e) => console.error(e));
+}
+
+// Ikonka w odtwarzaczu czeka na panel – gdy słuchanie nie ruszy, przestaje się kręcić.
+function cancelPage(page) {
+  if (page?.tabId != null) chrome.tabs.sendMessage(page.tabId, { type: "fc-media-cancel" }).catch(() => {});
+}
+// Kliknięcie ikonki w odtwarzaczu YouTube: słuchamy tego filmu (trwające słuchanie innej karty się kończy).
+async function listenToPage({ tabId }) {
+  if (state.running) await stop();
+  await start({ page: { tabId } });
 }
 
 // ---------- tekst ze strony (artykuł, post, zaznaczenie) ----------
@@ -2874,7 +2971,10 @@ async function intakeOne(p) {
     }
   }
   // Podgląd: przy obrazkach zawsze (miniatury), przy tekście – gdy jest długi albo skrócony.
-  if (p.kind !== "manual" && !p.skipPreview && (images.length || text.length > PREVIEW_CHARS || p.truncated)) {
+  // Ikonka przy tytule artykułu – jak ikonka przy poście: jedno kliknięcie sprawdza, bez podglądu (chyba że tekst
+  // trzeba skrócić).
+  const skipPreview = p.skipPreview || (p.via === "article" && text.length <= MAX_TEXT);
+  if (p.kind !== "manual" && !skipPreview && (images.length || text.length > PREVIEW_CHARS || p.truncated)) {
     const ok = await showPreview(p, { knownImages });
     if (!ok) { injectReset(p); return; }
     const changed = ok.text !== text || ok.kept.length !== images.length;
@@ -3322,7 +3422,7 @@ $("fcTest").addEventListener("click", async () => {
     el.textContent = t("set.keyBad", { msg: e.message });
   }
 });
-confirmButton($("memClear"), async () => { await clearMemory(); renderMemInfo(); });
+confirmButton($("memClear"), async () => { await clearMemory(); await chrome.storage.local.remove(MARKS_KEY).catch(() => {}); renderMemInfo(); });
 confirmButton($("forgetKeys"), async () => {
   S.apiKey = "";
   S.keys = {};
@@ -3403,6 +3503,158 @@ for (const id of SITE_IDS) {
     });
   });
 }
+// Ikonka w odtwarzaczu YouTube: zgoda przeglądarki na youtube.com w reakcji na kliknięcie, zapis od razu.
+async function renderMediaInfo(note = "") {
+  const el = $("mediaInfo");
+  if (note) { el.textContent = note; el.hidden = false; return; }
+  if (!$("mediaButtonsYt").checked) { el.hidden = true; return; }
+  el.textContent = t((await hasMediaAccess()) ? "set.mediaOn" : "set.mediaNoAccess");
+  el.hidden = false;
+}
+async function saveMedia(on) {
+  const { settings } = await chrome.storage.local.get("settings");
+  S[MEDIA_KEY] = on;
+  await chrome.storage.local.set({ settings: { ...(settings || {}), [MEDIA_KEY]: on } });
+  renderMediaInfo();
+  renderAccHints();
+}
+$("mediaButtonsYt").addEventListener("change", (e) => {
+  const box = e.target;
+  if (!box.checked) { saveMedia(false); return; }
+  chrome.permissions.request({ origins: MEDIA_ORIGINS }).catch(() => false).then((ok) => {
+    if (!ok) { box.checked = false; renderMediaInfo(t("set.mediaDenied")); renderAccHints(); return; }
+    saveMedia(true);
+  });
+});
+
+// Ikonka przy artykułach: tryb (wyłączone / serwisy z listy / wszędzie), lista serwisów z „Zaznacz wszystkie”
+// i „Pokazuj ikonkę na tej stronie”. Zgoda przeglądarki musi paść w reakcji na kliknięcie – prosimy o nią od razu
+// (już udzielona nie pokazuje okienka), a opcję zapisujemy od razu, bez „Zapisz”.
+async function saveArticleCfg(patch) {
+  const { settings } = await chrome.storage.local.get("settings");
+  Object.assign(S, patch);
+  await chrome.storage.local.set({ settings: { ...(settings || {}), ...patch } });
+  renderArticleSettings();
+  renderAccHints();
+}
+const askOrigins = (origins) => (origins.length ? chrome.permissions.request({ origins }).catch(() => false) : Promise.resolve(true));
+const siteOrigins = (ids) => ids.flatMap((id) => articleSite(id)?.origins || []);
+function articleNote(text) {
+  const el = $("articleInfo");
+  el.replaceChildren(text);
+  el.hidden = false;
+}
+let artHereHost = "";
+async function renderArticleSettings() {
+  const cfg = articleConfig(S);
+  for (const r of document.querySelectorAll("input[name=articleMode]")) r.checked = r.value === cfg.mode;
+  $("articleSites").hidden = cfg.mode !== "list";
+  renderArticleGroups(cfg);
+  renderArticleCustom(cfg);
+  const granted = (await chrome.permissions.getAll().catch(() => ({}))).origins || [];
+  const want = wantedOrigins(cfg);
+  const missing = want.filter((o) => !covered(o, granted));
+  const el = $("articleInfo");
+  if (cfg.mode === "off") { el.hidden = true; }
+  else if (missing.length) {
+    const fix = fcBtn({ variant: "secondary", iconName: "lock", label: t("set.articleGrant"), onClick: () => askOrigins(missing).then(() => renderArticleSettings()) });
+    el.replaceChildren(h("span", "", cfg.mode === "all" ? t("set.articleNoAccessAll") : t("set.articleNoAccess", { n: missing.length })), " ", fix);
+    el.hidden = false;
+  } else {
+    el.replaceChildren(t(cfg.mode === "all" ? "set.articleOnAll" : "set.articleOnList", { n: cfg.sites.length + cfg.custom.length }));
+    el.hidden = false;
+  }
+  // „Pokazuj ikonkę na tej stronie” – serwis z bieżącej karty, jeśli nie jest jeszcze włączony
+  const here = $("articleHere");
+  here.hidden = true;
+  if (cfg.mode !== "list") return;
+  const tab = await targetTab().catch(() => null);
+  let host = "";
+  try { const u = new URL(tab?.url || ""); if (u.protocol === "https:") host = cleanHost(u.hostname); } catch { /* np. chrome:// */ }
+  artHereHost = host;
+  const site = host && siteOfHost(host);
+  const on = site ? cfg.sites.includes(site.id) : cfg.custom.some((c) => host === c || host.endsWith(`.${c}`));
+  if (!host || on || /(^|\.)(facebook|x|twitter|youtube|google)\.com$/.test(host)) return;
+  here.replaceChildren(
+    h("span", "fc-t-13 fc-grow", t("set.articleHere", { site: site?.id || host })),
+    fcBtn({ variant: "secondary", iconName: "plus", label: t("set.articleHereAdd"), onClick: () => addArticleHere(site, host) }),
+  );
+  here.hidden = false;
+}
+function addArticleHere(site, host) {
+  if (site) { toggleArticleSites([site.id], true); return; }
+  askOrigins(customOrigins(host)).then((ok) => {
+    if (!ok) { articleNote(t("set.articleDenied")); return; }
+    saveArticleCfg({ articleCustom: [...articleConfig(S).custom, host] });
+  });
+}
+function toggleArticleSites(ids, on) {
+  const off = new Set(articleConfig(S).off);
+  if (!on) {
+    ids.forEach((id) => off.add(id));
+    saveArticleCfg({ articleSitesOff: [...off] });
+    return;
+  }
+  askOrigins(siteOrigins(ids)).then((ok) => {
+    if (!ok) { renderArticleSettings().then(() => articleNote(t("set.articleDenied"))); return; }
+    ids.forEach((id) => off.delete(id));
+    saveArticleCfg({ articleSitesOff: [...off] });
+  });
+}
+const artOpen = new Set(); // rozwinięte grupy (pl / world)
+function renderArticleGroups(cfg) {
+  const box = $("articleGroups");
+  box.replaceChildren(...ARTICLE_GROUPS.map((g) => {
+    const sites = ARTICLE_SITES.filter((x) => x.group === g);
+    const on = sites.filter((x) => !cfg.off.has(x.id)).length;
+    const grid = h("div", "art-grid");
+    for (const x of sites) {
+      const lab = h("label", "art-site");
+      const cb = h("input", "fc-check");
+      cb.type = "checkbox";
+      cb.value = x.id;
+      cb.checked = !cfg.off.has(x.id);
+      cb.addEventListener("change", () => toggleArticleSites([x.id], cb.checked));
+      lab.append(cb, h("span", "", x.label));
+      grid.append(lab);
+    }
+    const tools = h("div", "fc-row art-tools");
+    tools.append(
+      fcBtn({ variant: "ghost", iconName: "square-check", label: t("set.articleAll"), onClick: () => toggleArticleSites(sites.map((x) => x.id), true) }),
+      fcBtn({ variant: "ghost", iconName: "square", label: t("set.articleNone"), onClick: () => toggleArticleSites(sites.map((x) => x.id), false) }),
+    );
+    const body = h("div", "fc-stack");
+    body.append(tools, grid);
+    const d = discEl(t(`set.articleGroup.${g}`, { on, n: sites.length }), body, { cls: "art-group", open: artOpen.has(g) });
+    d.dataset.group = g;
+    d.addEventListener("toggle", () => { if (d.open) artOpen.add(g); else artOpen.delete(g); });
+    return d;
+  }));
+}
+function renderArticleCustom(cfg) {
+  const box = $("articleCustom");
+  box.hidden = !cfg.custom.length;
+  box.replaceChildren(h("span", "fc-field__label", t("set.articleCustom")), ...cfg.custom.map((host) => {
+    const row = h("div", "fc-row art-custom-row");
+    row.append(h("span", "fc-t-13 fc-grow", host), fcBtn({ variant: "icon", iconName: "x", label: t("set.articleRemove", { site: host }),
+      onClick: () => saveArticleCfg({ articleCustom: articleConfig(S).custom.filter((c) => c !== host) }) }));
+    return row;
+  }));
+}
+for (const r of document.querySelectorAll("input[name=articleMode]")) {
+  r.addEventListener("change", () => {
+    if (!r.checked) return;
+    const mode = r.value;
+    if (mode === "off") { saveArticleCfg({ articleButtons: "off" }); return; }
+    const cfg = articleConfig({ ...S, articleButtons: mode });
+    // „Wszędzie”: jedna zgoda na wszystkie strony https; „Serwisy z listy”: zgoda na zaznaczone serwisy (jedno okienko)
+    askOrigins(mode === "all" ? ALL_ORIGINS : wantedOrigins(cfg)).then((ok) => {
+      if (!ok) { renderArticleSettings().then(() => articleNote(t("set.articleDenied"))); return; }
+      saveArticleCfg({ articleButtons: mode });
+    });
+  });
+}
+
 $("settingsForm").addEventListener("submit", async (e) => {
   if (e.submitter?.value !== "save") return;
   const prevLang = getLang();
@@ -3441,6 +3693,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       const mine = state.claims.filter((c) => c.srcId === src.id).sort((a, b) => (a.t || 0) - (b.t || 0));
       if (mine.length) openReply(mine, src);
     }
+    isPopupWindow().then((popup) => { if (popup) chrome.windows.update(myWindow.id, { focused: true }).catch(() => {}); });
+    return;
+  }
+  if (msg?.type === "page-listen") {
+    reply({ panel: true });
+    listenToPage(msg).catch((e) => handleError(e));
     isPopupWindow().then((popup) => { if (popup) chrome.windows.update(myWindow.id, { focused: true }).catch(() => {}); });
     return;
   }

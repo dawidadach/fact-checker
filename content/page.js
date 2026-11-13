@@ -36,6 +36,7 @@
       site: m('meta[property="og:site_name"]') || host,
       author,
       date: m('meta[property="article:published_time"]') || m('meta[name="date"]') || m('meta[itemprop="datePublished"]') || "",
+      canonical: document.querySelector('link[rel="canonical"]')?.href || m('meta[property="og:url"]') || "",
     };
   }
 
