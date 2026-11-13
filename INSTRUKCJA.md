@@ -55,6 +55,24 @@ więc źródło nazywa się po prostu „Mikrofon”.
 
 Przyciski w panelu (Start, Artykuł, Wskaż post, Zaznaczenie, Wycinek) zawsze działają na karcie, którą masz teraz przed sobą.
 
+### Ikonka w odtwarzaczu YouTube – słuchanie jednym kliknięciem
+
+Włącz w **⚙ → Ikonka w filmach** (domyślnie wyłączona; przeglądarka zapyta o dostęp tylko do youtube.com). Na pasku
+odtwarzacza, na lewo od przycisku napisów, pojawi się ikonka Fact Checkera. **Kliknięcie od razu włącza słuchanie tego
+filmu** – bez Start, bez okna „Udostępnij kartę” i bez klikania ikony wtyczki na pasku. Panel się otwiera, źródło ma
+tytuł filmu, a werdykty pojawiają się jak przy Start. W trakcie słuchania ikonka ma czerwoną kropkę; ponowne kliknięcie
+(albo Stop w panelu) zatrzymuje.
+
+Dźwięk wtyczka bierze **prosto z odtwarzacza** – film gra normalnie, karta nie jest wyciszana, a dźwięk innych kart
+i powiadomień nie trafia do transkrypcji. W czasie reklamy i pauzy nic nie idzie dalej (nie płacisz za ciszę).
+Gdy w tej samej karcie przejdziesz do kolejnego filmu, słuchanie trwa dalej, a w panelu powstaje nowe źródło.
+Zamiana mowy na tekst działa tak samo jak przy Start: model lokalny albo OpenAI (⚙). Jeśli nie masz jeszcze modelu,
+po kliknięciu pojawi się okienko jego wyboru, a film zacznie być słuchany po **Zacznij słuchać**.
+
+Dlaczego to nie zwykły „dźwięk karty”: przeglądarka daje wtyczce dźwięk karty tylko po kliknięciu ikony wtyczki na pasku,
+w menu albo skrótem – kliknięcie w stronę jej nie wystarcza. Jeśli panel napisze, że nie słyszy dźwięku filmu (a film
+nie jest wyciszony), zatrzymaj i użyj **Start**.
+
 ### Wygląd panelu
 
 - **Na górze:** nazwa, stan („Gotowe…”, „Sprawdzam…”, „Słucham…”) oraz ikony **Historia** (zegar) i **Ustawienia**
@@ -131,6 +149,36 @@ kliknij ikonę wtyczki na pasku (będzie na niej „1”).
 
 Facebook często zmienia budowę strony. Jeśli ikonka przy jakimś poście się nie pojawi albo stanie w złym miejscu, użyj **Wskaż post** albo
 skrótu **Alt+Shift+F**.
+
+### Ikonka przy artykułach
+
+Artykuł też sprawdzisz jednym kliknięciem. Włącz w **⚙ → Ikonka przy artykułach** (domyślnie wyłączona) i wybierz:
+
+- **Na wybranych serwisach** – ok. 90 największych serwisów informacyjnych w dwóch grupach: **Polska** (portale, telewizje
+  i radia, dzienniki, tygodniki i serwisy opinii z różnych stron sporu, gospodarka, PAP) i **Świat** (USA, Wielka
+  Brytania, Europa: BBC, NYT, Reuters, AP, Fox News, The Guardian, Spiegel, Le Monde…). Wszystkie są zaznaczone –
+  odznacz te, których nie chcesz; **Zaznacz wszystkie** / **Odznacz wszystkie** działa na całą grupę naraz. Gdy jesteś
+  na stronie spoza listy, nad listą pojawia się **„Ta strona: … → Pokazuj ikonkę tutaj”** – dodane serwisy są w części
+  „Dodane przez Ciebie” (✕ usuwa).
+- **Wszędzie** – na każdej stronie, która wygląda jak artykuł (bez Facebooka i X – tam są ikonki przy postach).
+
+Przeglądarka zapyta o zgodę jeden raz: na serwisy z listy albo – przy „Wszędzie” – na wszystkie strony. Zmiany działają
+od razu, także w otwartych kartach, bez zapisywania.
+
+Ikonka pojawia się **dopiero po najechaniu myszą na tytuł artykułu** – na końcu jego ostatniej linii (gdy tam nie ma
+miejsca: na lewo od tytułu). Kliknięcie otwiera panel i od razu sprawdza cały artykuł – bez menu, reklam i komentarzy,
+bez okna podglądu (chyba że tekst jest dłuższy niż ok. 48 000 znaków). W trakcie sprawdzania przy tytule widać
+„Sprawdzam…”, a potem **znaczek z oceną całości** (np. „Wprowadza w błąd”; gdy twierdzenie jest jedno – jego werdykt).
+Kliknięcie znaczka pokazuje szczegóły w panelu.
+
+Gdy **pamięć werdyktów** jest włączona (⚙, domyślnie 30 dni), wtyczka zapamiętuje adres artykułu i jego ocenę (bez
+treści) – przy kolejnej wizycie znaczek jest przy tytule od razu, a jego kliknięcie pokazuje wynik z pamięci, bez
+kosztów. Wyczyszczenie pamięci werdyktów usuwa też te oceny.
+
+Artykuł wtyczka rozpoznaje po budowie strony: znacznikach serwisu (og:type, schema.org NewsArticle) albo nagłówku h1
+w treści z kilkoma akapitami. Na stronie głównej serwisu i przy zajawkach ikonki nie ma. Skrypt ikonki niczego nie
+czyta ani nie wysyła sam z siebie – treść artykułu idzie do modelu dopiero po kliknięciu. Jeśli na jakiejś stronie
+ikonka się nie pojawi, użyj przycisku **📄 Artykuł** w panelu albo prawego przycisku → **Sprawdź artykuł**.
 
 Tekst dłuższy niż 2000 znaków (albo skrócony post z „Zobacz więcej”) najpierw pokazuje się w oknie **„Co wyślę do
 sprawdzenia”** – możesz go przyciąć albo anulować. Bardzo długie teksty są dzielone na części (maks. ok. 48 000 znaków).
@@ -452,6 +500,11 @@ werdyktów, tabela mówców, wszystkie werdykty ze źródłami i obrazkami. **Dr
 - **Ikonka przy postach** (domyślnie wyłączona) daje wtyczce stały dostęp do serwisu, który włączysz (facebook.com,
   x.com – każdy osobno) – tylko po to,
   żeby pokazywać ikonkę po najechaniu na post. Post jest czytany dopiero po kliknięciu jego ikonki.
+- **Ikonka w filmach** (domyślnie wyłączona) daje wtyczce stały dostęp do youtube.com tylko po to, żeby pokazać ikonkę
+  w odtwarzaczu. Film jest słuchany dopiero po jej kliknięciu – do ponownego kliknięcia albo Stop w panelu.
+- **Ikonka przy artykułach** (domyślnie wyłączona) daje wtyczce stały dostęp do serwisów z listy, które zostawisz
+  zaznaczone (albo – przy „Wszędzie” – do wszystkich stron), tylko po to, żeby rozpoznać artykuł i pokazać ikonkę po
+  najechaniu na tytuł. Artykuł jest czytany dopiero po kliknięciu ikonki.
 - **Pamiętaj klucze API po zamknięciu przeglądarki** – wyłącz, żeby klucze znikały po zamknięciu przeglądarki.
   „Usuń wszystkie klucze” kasuje je od razu. Klucze nie są szyfrowane – używaj kluczy z limitem wydatków.
 

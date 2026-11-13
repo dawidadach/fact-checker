@@ -61,6 +61,11 @@ verdict with sources:
 - ✓ **Icon on posts** (optional) – hover over a Facebook or X post and a Fact Checker icon appears in its top-right
   corner, left of “…”; one click checks that post and shows the result in a box right under it (overall rating, verdicts, sources, “Copy as
   reply”). Off by default and switched on separately for Facebook and X; the browser asks for access only to the site you switch on.
+- ✓ **Icon on articles** (optional) – hover over a news article's headline and the icon appears at its end; one click checks
+  the whole article, then a rating badge (e.g. “Misleading”) stays next to the headline – and comes back on your next visit.
+  Three modes: off (default), **selected sites** (about 90 of the biggest Polish and international news sites – Onet, WP,
+  Interia, TVN24, Rzeczpospolita, wPolityce, OKO.press, BBC, NYT, Reuters, Fox News, Spiegel… – each can be unticked,
+  “Select all” per group, and you can add the site you are on) or **everywhere** (any page that looks like an article).
 - 👆 **Pick a post** – one Facebook / X post without the comments, with its images; Shift+click to pick several.
 - 📄 **Article** – only the article text (Mozilla Readability), without menus, ads and comments.
 - ✂ **Selection**, or right-click → Fact Checker, or **Alt+Shift+F**.
@@ -115,6 +120,9 @@ verdict with sources:
 ### Live debates and podcasts
 
 - **Tab audio or microphone**: open the video or stream, press **Start**, and verdicts appear as people speak.
+- ✓ **Icon in the YouTube player** (optional): one click on the icon next to the subtitles button starts listening to that
+  video right away – no Start, no picking a tab. The sound is taken straight from the video (it keeps playing normally,
+  the tab is not muted); click again to stop. Off by default; the browser asks for access to youtube.com only.
 - Speech is turned into text by a **local model on your computer** (free, offline) – the first **Start** offers the right one
   and downloads it – or by OpenAI.
 - **Speaking now:** mark who is speaking; verdicts, tricks and the report are attributed to that person.
@@ -203,6 +211,8 @@ English: an 11-second speech clip. On a GPU the models run faster and at higher 
 
 - Page text and images are sent to the model provider you chose only after you point at them (or click a post's button), and you see a preview first – except for the one-click post button.
 - The optional post icon gives the extension access to facebook.com and/or x.com (each switched on separately) only to show the icon when you hover over a post; a post is read when you click its icon.
+- The optional YouTube player icon gives the extension access to youtube.com only to show the icon in the player; it listens to the video only after you click it.
+- The optional article icon gives the extension access to the news sites you keep ticked (or, with “Everywhere”, to all sites) only to recognise an article by the page's structure and show the icon when you hover over its headline; the article is read when you click the icon.
 - Scam checks and source levels run in the browser; the CERT Polska list is downloaded whole, so nobody learns what you check.
 - With a local speech model, audio stays on your computer; only text goes to the model provider.
 - Keys and sign-in tokens stay in this browser. Details: [PRIVACY.md](PRIVACY.md).
@@ -295,6 +305,12 @@ fakty historyczne), dostaje werdykt ze źródłami:
 - ✓ **Ikonka przy postach** (opcja) – po najechaniu na post na Facebooku albo X w jego prawym górnym rogu, na lewo
   od „…”, pojawia się ikonka Fact Checkera; jedno kliknięcie sprawdza ten post i pokazuje wynik w ramce tuż pod nim (ocena całości, werdykty, źródła, „Kopiuj
   jako odpowiedź”). Domyślnie wyłączona, włączana osobno dla Facebooka i X; przeglądarka pyta o dostęp tylko do serwisu, który włączasz.
+- ✓ **Ikonka przy artykułach** (opcja) – po najechaniu na tytuł artykułu na jego końcu pojawia się ikonka; jedno kliknięcie
+  sprawdza cały artykuł, a potem przy tytule zostaje znaczek z oceną (np. „Wprowadza w błąd”) – wraca też przy kolejnej
+  wizycie. Trzy tryby: wyłączone (domyślnie), **wybrane serwisy** (ok. 90 największych polskich i zagranicznych serwisów
+  informacyjnych – Onet, WP, Interia, TVN24, Rzeczpospolita, wPolityce, OKO.press, BBC, NYT, Reuters, Fox News, Spiegel… –
+  każdy można odznaczyć, „Zaznacz wszystkie” w grupie, można dodać stronę, na której jesteś) albo **wszędzie** (każda
+  strona, która wygląda jak artykuł).
 - 👆 **Wskaż post** – jeden post z Facebooka / X, bez komentarzy, razem z obrazkami; Shift+klik – kilka po kolei.
 - 📄 **Artykuł** – sama treść artykułu (Mozilla Readability), bez menu, reklam i komentarzy.
 - ✂ **Zaznaczenie**, prawy przycisk → Fact Checker albo **Alt+Shift+F**.
@@ -352,6 +368,9 @@ fakty historyczne), dostaje werdykt ze źródłami:
 ### Debaty i podcasty na żywo
 
 - **Dźwięk karty albo mikrofon**: otwórz film albo transmisję, kliknij **Start** – werdykty pojawiają się w trakcie rozmowy.
+- ✓ **Ikonka w odtwarzaczu YouTube** (opcja): jedno kliknięcie ikonki obok przycisku napisów od razu włącza słuchanie tego
+  filmu – bez Start i bez wybierania karty. Dźwięk idzie prosto z filmu (film gra normalnie, karta nie jest wyciszana);
+  ponowne kliknięcie zatrzymuje. Domyślnie wyłączona; przeglądarka pyta o dostęp tylko do youtube.com.
 - Mowę zamienia na tekst **lokalny model na Twoim komputerze** (za darmo, bez internetu) – przy pierwszym **Start** wtyczka
   sama zaproponuje odpowiedni i go pobierze – albo OpenAI.
 - **Teraz mówi:** wskazujesz, kto mówi; werdykty, chwyty i raport przypisują wypowiedzi tej osobie.
@@ -441,6 +460,8 @@ Potem działa bez internetu i nic nie wychodzi z komputera.
 
 - Tekst i obrazki ze stron trafiają do wybranego dostawcy modelu tylko po ich wskazaniu (albo kliknięciu ikonki przy poście); przy wskazywaniu najpierw widzisz podgląd.
 - Opcjonalna ikonka przy postach daje wtyczce dostęp do facebook.com i/lub x.com (każdy włączany osobno) tylko po to, żeby pokazywać ikonkę po najechaniu na post; post jest czytany dopiero po kliknięciu.
+- Opcjonalna ikonka w odtwarzaczu YouTube daje wtyczce dostęp do youtube.com tylko po to, żeby pokazać ikonkę w odtwarzaczu; film jest słuchany dopiero po jej kliknięciu.
+- Opcjonalna ikonka przy artykułach daje wtyczce dostęp do serwisów informacyjnych, które zostawisz zaznaczone (albo – przy „Wszędzie” – do wszystkich stron), tylko po to, żeby rozpoznać artykuł po budowie strony i pokazać ikonkę po najechaniu na tytuł; artykuł jest czytany dopiero po kliknięciu.
 - Sprawdzanie oszustw i poziomu źródeł działa w przeglądarce; Lista CERT Polska jest pobierana w całości, więc nikt nie wie,
   co sprawdzasz.
 - Przy lokalnym modelu mowy dźwięk zostaje na Twoim komputerze; do dostawcy modelu trafia tylko tekst.

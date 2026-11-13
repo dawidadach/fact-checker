@@ -2,6 +2,34 @@
 
 Rozwinięcie wtyczki [dawidadach/fact-checker](https://github.com/dawidadach/fact-checker) (punkt wyjścia: v0.4.1).
 
+## 0.7.7 – 13 listopada 2026
+
+### Nowości
+- **Ikonka przy artykułach** (⚙ → Ikonka przy artykułach, domyślnie wyłączona):
+  - po najechaniu na tytuł artykułu na końcu jego ostatniej linii pojawia się ikonka Fact Checkera;
+  - jedno kliknięcie otwiera panel i sprawdza cały artykuł – bez menu, reklam i komentarzy, bez okna podglądu;
+  - po sprawdzeniu przy tytule zostaje znaczek z oceną całości (albo werdyktem, gdy twierdzenie jest jedno);
+    kliknięcie znaczka pokazuje szczegóły w panelu;
+  - przy kolejnej wizycie znaczek jest od razu (pamiętany adres i ocena, bez treści – tylko przy włączonej pamięci
+    werdyktów), a jego kliknięcie daje wynik z pamięci, bez kosztów.
+- **Trzy tryby:**
+  - **Wyłączone**;
+  - **Na wybranych serwisach** – 88 serwisów w grupach Polska (41: portale, telewizje i radia, dzienniki, tygodniki
+    i serwisy opinii z różnych stron sporu, gospodarka, PAP) i Świat (47: USA, Wielka Brytania, Europa); wszystkie
+    zaznaczone, **Zaznacz wszystkie / Odznacz wszystkie** w każdej grupie, **„Pokazuj ikonkę tutaj”** dla strony spoza
+    listy;
+  - **Wszędzie** – każda strona, która wygląda jak artykuł (bez Facebooka i X).
+- **Jedna zgoda przeglądarki** na listę albo – przy „Wszędzie” – na wszystkie strony; zmiany działają od razu, także
+  w otwartych kartach.
+- **Ikonka w odtwarzaczu YouTube** (⚙ → Ikonka w filmach, domyślnie wyłączona): na pasku odtwarzacza, na lewo od
+  napisów. Jedno kliknięcie od razu włącza słuchanie tego filmu – bez Start, bez okna „Udostępnij kartę” i bez
+  klikania ikony wtyczki na pasku. Dźwięk idzie prosto z odtwarzacza (film gra normalnie, karta nie jest wyciszana,
+  reklamy i pauzy są pomijane); ponowne kliknięcie albo Stop w panelu zatrzymuje. Kolejny film w tej samej karcie =
+  nowe źródło. Przeglądarka pyta o dostęp tylko do youtube.com.
+- **Rozpoznawanie artykułu po budowie strony:** og:type, schema.org (NewsArticle i pokrewne), nagłówek h1 w treści
+  z akapitami. Strona główna serwisu i zajawki – bez ikonki. Działa też przy przejściu do kolejnego artykułu bez
+  przeładowania strony.
+
 ## 0.7.6 – 12 listopada 2026
 
 ### Zmiany

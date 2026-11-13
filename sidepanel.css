@@ -309,6 +309,19 @@ dialog.fc-sheet::backdrop { background: var(--fc-overlay); }
 .fc-switch-row { align-items: flex-start; }
 .fc-switch-row > span { padding-top: 1px; min-width: 0; }
 .fc-switch-row > .fc-switch { margin-top: 0; }
+/* ikonka przy artykułach: lista serwisów */
+.art-sites { gap: 8px; margin-top: 4px; }
+.art-here { gap: 8px; align-items: center; padding: 8px 10px; border-radius: var(--fc-r-md); background: var(--fc-accent-soft); }
+.art-tools { gap: 4px; flex-wrap: wrap; padding: 0 0 6px; }
+.art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; padding: 0 0 8px; }
+.art-site { display: flex; align-items: center; gap: 7px; font-size: var(--fc-fs-12); min-width: 0; cursor: pointer; }
+.art-site > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.art-site .fc-check { width: 26px; height: 16px; }
+.art-site .fc-check::after { width: 12px; height: 12px; }
+.art-site .fc-check:checked::after { transform: translateX(10px); }
+.art-custom { gap: 4px; }
+.art-custom-row { gap: 8px; align-items: center; }
+#articleInfo .fc-btn { margin-top: 6px; }
 .price-row { align-items: flex-start; }
 .price-row .fc-field { flex: 1 1 120px; }
 .prices > summary { font-weight: var(--fc-fw-medium); }
