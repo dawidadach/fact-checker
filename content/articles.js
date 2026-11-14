@@ -46,7 +46,9 @@
     const next = pref === "pl" || pref === "en" ? pref : /^pl\b/i.test(uiLang()) ? "pl" : "en";
     if (next !== lang) { lang = next; if (cur.mark?.state === "done") askMark(); else paintAll(); }
   };
-  const onStorage = (ch) => { if (ch.settings && alive()) applyLang(ch.settings.newValue?.uiLang); };
+  // Język z ustawień wtyczki podaje tło (skrypty na stronach nie mają dostępu do zapisanych danych wtyczki).
+  const askLang = () => { try { chrome.runtime.sendMessage({ type: "fc-ui-lang" }).then((r) => applyLang(r?.lang)).catch(() => {}); } catch { /* wtyczka przeładowana */ } };
+  const onLangMsg = (m) => { if (m?.type === "fc-ui-lang" && alive()) applyLang(m.lang); };
 
   // ---------- czy to artykuł i gdzie jest jego tytuł ----------
   const ARTICLE_TYPE = /^(schema:)?(Article|NewsArticle|ReportageNewsArticle|AnalysisNewsArticle|OpinionNewsArticle|BackgroundNewsArticle|ReviewNewsArticle|AskPublicNewsArticle|SatiricalArticle|LiveBlogPosting|BlogPosting|Report)$/i;
@@ -179,7 +181,8 @@
     b.type = "button";
     b.className = cls;
     stopAll(b);
-    b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
+    // tylko prawdziwe kliknięcie (mysz, klawiatura) – zdarzenie wywołane skryptem strony nic nie robi
+    b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (!e.isTrusted) return; onClick(); });
     sh.append(st, b);
     return { h, b };
   }
@@ -397,8 +400,8 @@
     running = true;
     document.querySelectorAll(`${BTN}, ${MARK}`).forEach((n) => { if (n.dataset.fcGen !== GEN) n.remove(); });
     try {
-      chrome.storage.local.get("settings").then(({ settings }) => applyLang(settings?.uiLang)).catch(() => {});
-      chrome.storage.onChanged.addListener(onStorage);
+      askLang();
+      chrome.runtime.onMessage.addListener(onLangMsg);
     } catch { /* poza wtyczką */ }
     refresh();
     poll = setInterval(() => { if (!alive()) { stop(); return; } refresh(); }, 1500);
@@ -407,7 +410,7 @@
     running = false;
     clearInterval(poll);
     listen(false);
-    try { chrome.storage.onChanged.removeListener(onStorage); } catch { /* wtyczka przeładowana */ }
+    try { chrome.runtime.onMessage.removeListener(onLangMsg); } catch { /* wtyczka przeładowana */ }
     clearTimeout(cur.timer);
     document.querySelectorAll(`${BTN}[data-fc-gen="${GEN}"], ${MARK}[data-fc-gen="${GEN}"]`).forEach((n) => n.remove());
     hover.btn = null;

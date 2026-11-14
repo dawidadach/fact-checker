@@ -23,6 +23,7 @@ import {
 import { addTo, emptyUsage, fmtTokens, fmtUsd, localDay, modeOf, MODES, priceFor, usageCost } from "./lib/pricing.js";
 import { conflicts, FactCheckApiError, pickFactChecks, queryFor, ratingTone, searchClaims } from "./lib/factcheckapi.js";
 import { clearMemory, contentKey, findImages, findInMemory, memoryCount, saveToMemory } from "./lib/memory.js";
+import { buildImageVerifyRequest, hasText, parseImageVerify } from "./lib/imageverify.js";
 import { PROBLEM_VERDICTS } from "./lib/report.js";
 import { buildReplyRequest, composeReply, originalReply, parseReply, templateReply, X_LIMIT, xLength } from "./lib/reply.js";
 import { buildSummaryRequest, GENRE_TONE, LEVEL_TONE, LEVELS, needsSummary, parseSummary, severityRank, summaryKey, validSummary } from "./lib/summary.js";
@@ -2309,6 +2310,39 @@ async function applyMemory(p, hit) {
   saveSessionNow();
   runQueued();
 }
+// Obrazek z tekstem rozpoznany w pamięci po odcisku: odcisk nie widzi zmiany drobnego napisu (rok, słowo, cyfra),
+// więc krótko pytamy model, czy tekst jest ten sam co zapamiętany (lib/imageverify.js). Różnica → sprawdzamy od nowa
+// (z informacją, co się zmieniło). Gdy zapytać się nie da (limit, błąd sieci, model bez obrazków) – jak dotąd: wynik
+// z pamięci z datą i „Sprawdź ponownie”.
+async function imagesUnchanged(images, notes) {
+  const todo = images.map((im, i) => ({ index: i + 1, dataUrl: im.dataUrl, text: notes[i]?.text || "" })).filter((x) => x.dataUrl && hasText(x.text));
+  if (!todo.length || limitReached() || state.disabled.has("images") || !modelTakesImages()) return true;
+  setStatus(t("mem.verifying"));
+  try {
+    await ensureModel();
+    let structured = PROVIDERS[S.provider]?.structured !== false && !state.disabled.has("structured");
+    let res;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        res = await callModel({ provider: S.provider, key: await getToken(), body: buildImageVerifyRequest({ model: S.model, images: todo, structured }), timeoutMs: 60_000, idleMs: 30_000 });
+        break;
+      } catch (e) {
+        if (structured && unsupportedFeature(e) === "structured" && attempt < 1) { structured = false; continue; }
+        throw e;
+      }
+    }
+    recordUsage(res.usage).catch((e) => console.warn(e));
+    const r = parseImageVerify(res.text);
+    // brak odpowiedzi dla któregoś obrazka = nie wiemy → sprawdzamy od nowa
+    const bad = todo.find((x) => !r?.get(x.index)?.same);
+    if (r && !bad) return true;
+    banner(esc(t("mem.imgChanged", { diff: (bad && r?.get(bad.index)?.difference) || t("mem.imgChangedUnknown") })));
+    return false;
+  } catch (e) {
+    console.warn(e);
+    return true;
+  }
+}
 // „Sprawdź ponownie”: wynik z pamięci znika, tekst/obrazek idzie do sprawdzenia od nowa.
 function recheckSource(src) {
   const p = recheck.get(src.id);
@@ -2989,10 +3023,11 @@ async function intakeOne(p) {
     if (memKey && !p.noMemory) {
       const opts = { lang: getLang(), maxAgeDays: S.memoryDays };
       const hit = await findInMemory(memKey, opts).catch(() => null);
-      if (hit) { await applyMemory({ ...p, text, images, memKey }, hit); return; }
-      if (images.length) {
+      const notesOf = (list) => images.map((_, i) => list.find((n) => n?.index === i + 1) || null);
+      if (hit && (await imagesUnchanged(images, notesOf(hit.imageNotes || [])))) { await applyMemory({ ...p, text, images, memKey }, hit); return; }
+      if (!hit && images.length) {
         const found = await findImages(memKey.images, opts).catch(() => []);
-        if (found.length === images.length && found.every(Boolean)) {
+        if (found.length === images.length && found.every(Boolean) && (await imagesUnchanged(images, found.map((m) => m.note)))) {
           if (!text) { await applyMemory({ ...p, text, images, memKey }, imagesHit(found)); return; }
           knownImages = found;
         }
@@ -3698,7 +3733,10 @@ $("settingsForm").addEventListener("submit", async (e) => {
   renderSummary();
   if (setLang(resolveLang(S.uiLang)) !== prevLang) localize(true);
 });
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+// Polecenia dla panelu przychodzą tylko od tła wtyczki – nie od skryptów na stronach WWW.
+const fromExtension = (sender) => sender?.id === chrome.runtime.id && String(sender.url || "").startsWith(chrome.runtime.getURL(""));
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (!fromExtension(sender)) return;
   if (msg?.type === "tab-invoked") {
     if (!state.running) {
       invoked = { id: msg.tabId, title: msg.title || "" };

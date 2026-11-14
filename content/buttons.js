@@ -47,9 +47,10 @@
     const next = pref === "pl" || pref === "en" ? pref : /^pl\b/i.test(uiLang()) ? "pl" : "en";
     if (next !== lang) { lang = next; relabel(); }
   };
+  // Język z ustawień wtyczki podaje tło (skrypty na stronach nie mają dostępu do zapisanych danych wtyczki).
   try {
-    chrome.storage.local.get("settings").then(({ settings }) => applyLang(settings?.uiLang)).catch(() => {});
-    chrome.storage.onChanged.addListener((ch) => { if (ch.settings && alive()) applyLang(ch.settings.newValue?.uiLang); });
+    chrome.runtime.sendMessage({ type: "fc-ui-lang" }).then((r) => applyLang(r?.lang)).catch(() => {});
+    chrome.runtime.onMessage.addListener((m) => { if (m?.type === "fc-ui-lang" && alive()) applyLang(m.lang); });
   } catch { /* poza wtyczką */ }
 
   // Motyw strony (X i Facebook mają własny tryb ciemny, niezależny od systemu) – po jasności tła.
@@ -165,9 +166,11 @@
     b.className = "float";
     // Kliknięcie nie może dojść do serwisu (X otwiera tweet po kliknięciu gdziekolwiek w nim).
     for (const t of ["pointerdown", "mousedown", "pointerup", "mouseup", "dblclick", "auxclick"]) b.addEventListener(t, (e) => e.stopPropagation());
+    // tylko prawdziwe kliknięcie (mysz, klawiatura) – zdarzenie wywołane skryptem strony nic nie robi
     b.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (!e.isTrusted) return;
       if (hover.root) press(hover.root);
     });
     sh.append(st, b);
@@ -257,6 +260,7 @@
     p.shadow.innerHTML = `<style>${css}</style>${html}`; // HTML z panelu wtyczki – dane już jako tekst
     p.shadow.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", (e) => {
       e.preventDefault();
+      if (!e.isTrusted) return;
       const act = b.dataset.act;
       if (act === "close") { setState(root, "hidden"); return; }
       if (!alive()) { note(L().reload); return; }
