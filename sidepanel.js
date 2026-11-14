@@ -1365,7 +1365,8 @@ function showImageError(p) {
       if (ok) banner(esc(t("img.granted")));
     });
   } else {
-    banner(esc(t(p.imageError === "frame" ? "img.frame" : p.imageError === "notVisible" ? "img.notVisible" : "img.failed", { msg: p.imageErrorMsg || "" })));
+    const key = { frame: "img.frame", notVisible: "img.notVisible", tabChanged: "img.tabChanged" }[p.imageError] || "img.failed";
+    banner(esc(t(key, { msg: p.imageErrorMsg || "" })));
   }
 }
 
@@ -2714,6 +2715,7 @@ async function start({ page = null } = {}) {
   if (why) { if (page) state.pendingPage = { ...page, at: Date.now() }; await openSttSetup(why); return; }
   if (!page && state.pendingPage && Date.now() - state.pendingPage.at < 3 * 60_000 && S.src === "tab") page = state.pendingPage;
   state.pendingPage = null;
+  if (!page && S.src === "tab") await askTabCapture(); // pierwszy Start z dźwiękiem karty: zgoda na nagrywanie karty
   const pageStream = async () => {
     tabInfo = await chrome.tabs.get(page.tabId);
     state.pageAudio = await connectPageAudio(page.tabId, {
@@ -2850,6 +2852,33 @@ async function stop() {
   await saveSessionNow();
   if (S.autoExport && session.id && hasContent(stateContent())) downloadMarkdown(snapshot()).catch((e) => console.error(e));
 }
+
+// ---------- zgoda na nagrywanie karty (tabCapture – uprawnienie opcjonalne) ----------
+// Przy instalacji Chrome pokazywałby dla tabCapture „Odczytywanie i zmienianie wszystkich Twoich danych we wszystkich
+// witrynach” – jedyny taki napis wtyczki, a to tylko dźwięk karty. Dlatego pytamy dopiero przy pierwszym Start
+// z dźwiękiem karty (kliknięcie = gest użytkownika, którego wymaga przeglądarka). Odmowa: Start działa dalej przez
+// okno „Udostępnij kartę”, a wtyczka nie pyta znowu (zgodę można dać w ⚙ → Słuchanie na żywo).
+let tabCaptureOk = false;
+const tabCaptureState = () => chrome.permissions.contains({ permissions: ["tabCapture"] }).catch(() => false).then((ok) => { tabCaptureOk = ok; renderTabCaptureInfo(); return ok; });
+chrome.permissions.onAdded?.addListener(() => tabCaptureState());
+chrome.permissions.onRemoved?.addListener(() => tabCaptureState());
+async function askTabCapture({ force = false } = {}) {
+  if (tabCaptureOk || (await tabCaptureState())) return true;
+  if (S.tabCaptureNo && !force) return false;
+  let ok;
+  try { ok = await chrome.permissions.request({ permissions: ["tabCapture"] }); } catch (e) { console.warn(e); return false; } // np. brak gestu
+  tabCaptureOk = ok;
+  if (!!S.tabCaptureNo !== !ok) { S.tabCaptureNo = !ok; await saveSettings(); }
+  renderTabCaptureInfo();
+  return ok;
+}
+function renderTabCaptureInfo() {
+  const row = $("tabCaptureRow");
+  if (!row) return;
+  row.hidden = tabCaptureOk;
+}
+$("tabCaptureAllow")?.addEventListener("click", () => askTabCapture({ force: true }));
+tabCaptureState();
 
 // Ikonka w odtwarzaczu czeka na panel – gdy słuchanie nie ruszy, przestaje się kręcić.
 function cancelPage(page) {

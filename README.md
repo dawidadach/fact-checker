@@ -215,6 +215,7 @@ English: an 11-second speech clip. On a GPU the models run faster and at higher 
 - The optional article icon gives the extension access to the news sites you keep ticked (or, with “Everywhere”, to all sites) only to recognise an article by the page's structure and show the icon when you hover over its headline; the article is read when you click the icon.
 - Scam checks and source levels run in the browser; the CERT Polska list is downloaded whole, so nobody learns what you check.
 - With a local speech model, audio stays on your computer; only text goes to the model provider.
+- Installing shows no “all your data on all websites” warning: tab-audio recording (`tabCapture`, which Chrome describes that way) is optional and requested only on the first Start with tab audio; without it Start uses the “Share tab” window.
 - Keys and sign-in tokens stay in this browser. Details: [PRIVACY.md](PRIVACY.md).
 
 ### Project structure
@@ -465,6 +466,7 @@ Potem działa bez internetu i nic nie wychodzi z komputera.
 - Sprawdzanie oszustw i poziomu źródeł działa w przeglądarce; Lista CERT Polska jest pobierana w całości, więc nikt nie wie,
   co sprawdzasz.
 - Przy lokalnym modelu mowy dźwięk zostaje na Twoim komputerze; do dostawcy modelu trafia tylko tekst.
+- Przy instalacji nie ma ostrzeżenia o „wszystkich Twoich danych we wszystkich witrynach”: nagrywanie dźwięku karty (`tabCapture`, które Chrome tak opisuje) jest opcjonalne – przeglądarka pyta o nie dopiero przy pierwszym Start z dźwiękiem karty, a bez zgody Start działa przez okno „Udostępnij kartę”.
 - Klucze i tokeny logowania zostają w tej przeglądarce. Szczegóły: [PRIVACY.md](PRIVACY.md).
 
 ### Budowanie i testy

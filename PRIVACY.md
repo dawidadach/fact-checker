@@ -1,6 +1,6 @@
 # Polityka prywatności – Fact Checker
 
-*Wersja z 13 listopada 2026 r. (wtyczka 0.7.7). English version below.*
+*Wersja z 14 listopada 2026 r. (wtyczka 0.7.8). English version below.*
 
 Fact Checker to wtyczka do przeglądarki (Chrome, Edge, Opera), która sprawdza fakty w tym, co oglądasz i czytasz. Nie ma własnego serwera: nie zbiera statystyk, nie wysyła niczego autorom i nie ma kont użytkowników. Dane trafiają tylko do usług, które sam wybierzesz w ustawieniach, i tylko wtedy, gdy wtyczka wykonuje to, o co prosisz.
 
@@ -10,7 +10,7 @@ Fact Checker to wtyczka do przeglądarki (Chrome, Edge, Opera), która sprawdza 
 |---|---|---|
 | Fragmenty transkrypcji rozmowy (tekst) | wybrany dostawca modelu: OpenAI (plan ChatGPT albo klucz API), Google Gemini, Anthropic Claude albo OpenRouter (a przez niego dostawca wybranego modelu) | w trakcie nagrywania, co kilkadziesiąt sekund, i po kliknięciu „Sprawdź teraz” |
 | Tekst wskazany na stronie (artykuł, post, zaznaczenie) wraz z tytułem, adresem, nazwą serwisu, autorem i datą publikacji | wybrany dostawca modelu | tylko po Twoim wskazaniu: przycisk w panelu, menu pod prawym przyciskiem, skrót klawiszowy, ikonka przy poście lub przy tytule artykułu (opcja) |
-| Zrzuty widocznych obrazków albo zaznaczonego wycinka ekranu | wybrany dostawca modelu | tylko po wskazaniu obrazka, posta z obrazkiem albo wycinka, po podglądzie z miniaturami |
+| Zrzuty widocznych obrazków albo zaznaczonego wycinka ekranu | wybrany dostawca modelu | tylko po wskazaniu obrazka, posta z obrazkiem albo wycinka, po podglądzie z miniaturami (ikonka przy poście – bez podglądu). Zrzut jest odrzucany, jeśli w jego trakcie zmienisz kartę albo strona przejdzie gdzie indziej – nie trafi tam nic z innej karty |
 | Dźwięk (kawałki nagrania) – z karty, z mikrofonu albo, po kliknięciu ikonki w odtwarzaczu YouTube, prosto z filmu | OpenAI – tylko gdy w ⚙ wybierzesz transkrypcję „OpenAI”. Domyślny model lokalny działa na Twoim komputerze i nic nie wysyła. Rozpoznawanie wbudowane w przeglądarkę (Chrome, Edge) działa według jej zasad. | w trakcie nagrywania |
 | Werdykt i treść wskazanego posta (do napisania komentarza) | wybrany dostawca modelu | tylko po wybraniu tonu (Rzeczowo / Na luzie / Krótko pod X) w okienku „Kopiuj jako odpowiedź” – sam „Oryginał” nic nie wysyła |
 | Twierdzenie, poprzedni werdykt, fragment tekstu wokół cytatu i Twoja uwaga (opcjonalna) | wybrany dostawca modelu albo inny, którego wskażesz na liście | tylko po kliknięciu „Sprawdź dokładniej” |
@@ -60,7 +60,7 @@ Podgląd przed wysłaniem pokazuje dokładnie to, co pójdzie do modelu.
 
 ## Uprawnienia wtyczki
 
-- `tabCapture`: dźwięk karty.
+- `tabCapture` (opcjonalne – przeglądarka pyta przy pierwszym Start z dźwiękiem karty): nagrywanie dźwięku karty, na której klikniesz Start. Chrome opisuje je jako „Odczytywanie i zmienianie wszystkich Twoich danych we wszystkich witrynach” – to jego stały tekst dla nagrywania karty, nie dostęp do stron. Bez tej zgody Start działa przez okno „Udostępnij kartę”.
 - `activeTab`, `scripting`: odczyt wskazanego tekstu i podświetlenia na stronie.
 - `contextMenus`: menu pod prawym przyciskiem.
 - `storage`, `unlimitedStorage`: ustawienia, historia i modele lokalne.
@@ -92,7 +92,7 @@ Pytania i zgłoszenia: zakładka Issues w repozytorium projektu na GitHubie.
 
 # Privacy policy – Fact Checker
 
-*Version of 13 November 2026 (extension 0.7.7).*
+*Version of 14 November 2026 (extension 0.7.8).*
 
 Fact Checker is a browser extension (Chrome, Edge, Opera) that fact-checks what you watch and read. It has no server of its own: no analytics, nothing is sent to its authors, and there are no user accounts. Data goes only to the services you choose in the settings, and only while the extension does what you asked for.
 
@@ -102,7 +102,7 @@ Fact Checker is a browser extension (Chrome, Edge, Opera) that fact-checks what 
 |---|---|---|
 | Transcript excerpts (text) | the model provider you chose: OpenAI (ChatGPT plan or API key), Google Gemini, Anthropic Claude or OpenRouter (and through it the provider of the chosen model) | while recording, every few dozen seconds, and when you click “Check now” |
 | Text you point at on a page (article, post, selection) with its title, URL, site name, author and publication date | the chosen model provider | only after you point at it: panel button, right-click menu, keyboard shortcut, the icon on a post or next to an article's headline (optional) |
-| Screenshots of visible images or of a selected screen area | the chosen model provider | only after you point at an image, a post with images or an area, after a preview with thumbnails |
+| Screenshots of visible images or of a selected screen area | the chosen model provider | only after you point at an image, a post with images or an area, after a preview with thumbnails (the post icon skips the preview). A screenshot is discarded if you switch tabs or the page navigates away while it is taken – nothing from another tab gets in |
 | Audio chunks – from the tab, the microphone or, after you click the icon in the YouTube player, straight from the video | OpenAI – only if you choose “OpenAI” transcription in ⚙. The default local model runs on your computer and sends nothing. Recognition built into the browser (Chrome, Edge) follows its rules. | while recording |
 | The verdict and the text of the post you pointed at (to write a comment) | the chosen model provider | only when you pick a tone (Matter-of-fact / Casual / Short for X) in the “Copy as reply” window – the “Original” tab sends nothing |
 | The claim, the earlier verdict, the text around the quote and your note (optional) | the chosen model provider, or another one you pick from the list | only when you click “Check more thoroughly” |
@@ -152,7 +152,7 @@ The preview before sending shows exactly what will go to the model.
 
 ## Permissions
 
-- `tabCapture`: tab audio.
+- `tabCapture` (optional – the browser asks on the first Start with tab audio): recording the audio of the tab you start on. Chrome describes it as “Read and change all your data on all websites” – that is its fixed wording for recording a tab, not access to websites. Without this permission Start works through the “Share tab” window.
 - `activeTab`, `scripting`: reading the text you point at and highlighting on the page.
 - `contextMenus`: the right-click menu.
 - `storage`, `unlimitedStorage`: settings, history and local models.
