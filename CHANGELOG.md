@@ -2,6 +2,32 @@
 
 Rozwinięcie wtyczki [dawidadach/fact-checker](https://github.com/dawidadach/fact-checker) (punkt wyjścia: v0.4.1).
 
+## 0.7.8 – 14 listopada 2026
+
+Dwie poprawki zgłoszone przez voytas_ – dziękujemy!
+
+### Poprawki
+- **Pamięć werdyktów nie myli już liczb.** Przy rozpoznawaniu tego samego tekstu wtyczka pomijała wszystkie znaki
+  poza literami i cyframi, więc „2.5%” i „25%”, „-3%” i „3%”, „1,5 mln” i „15 mln”, „3/4” i „34” albo „10:30” i „1030”
+  były dla niej tym samym tekstem – a post z podmienioną liczbą dostawał wynik z pamięci dla oryginału (np. „Prawda”
+  przy zmanipulowanych 25%). Teraz znaki przy liczbach (kropka i przecinek dziesiętny, minus, %, /, :, <, >, waluty,
+  stopnie) się liczą, a liczby rozdzielone przecinkiem albo spacją („3, 4”) nie zlewają się w jedną. Interpunkcja
+  w zwykłym tekście dalej nie ma znaczenia. Teksty sprawdzone przed aktualizacją zostaną raz sprawdzone od nowa.
+- **Zrzut obrazka nie złapie innej karty.** Przeglądarka zrzuca to, co w danej chwili widać w oknie. Gdy w trakcie
+  zrzutu (do ok. 0,7 s) przełączyłeś kartę, wycinki mogły pochodzić z tej drugiej karty i trafić do modelu – przy
+  ikonce przy poście nawet bez podglądu. Teraz wtyczka pilnuje karty przez cały zrzut: przełączenie karty w tym
+  oknie, przejście strony na inny adres, zamknięcie albo przeniesienie karty – i zrzut jest odrzucany (także gdy
+  wrócisz na kartę przed końcem). Tekst jest sprawdzany dalej, a panel prosi, żeby kliknąć jeszcze raz.
+
+### Zmiany
+- **Przy instalacji nie ma już ostrzeżenia „Odczytywanie i zmienianie wszystkich Twoich danych we wszystkich
+  witrynach”.** Ten napis pochodził wyłącznie od uprawnienia do nagrywania dźwięku karty (`tabCapture`) – Chrome
+  ma dla niego tylko taki, najszerszy tekst. Teraz to uprawnienie jest opcjonalne: przeglądarka pyta o nie przy
+  pierwszym **Start** z dźwiękiem karty. Odmowa nic nie psuje – Start działa przez okno „Udostępnij kartę”, wtyczka
+  nie pyta znowu, a zgodę można dać później w ⚙ → Słuchanie na żywo. Mikrofon i ikonka w odtwarzaczu YouTube tej
+  zgody nie potrzebują. Przy instalacji zostają tylko „Odczytywanie historii przeglądania” (tytuł i adres kart) i
+  „Zarządzanie pobranymi plikami” (raporty i eksport).
+
 ## 0.7.7 – 13 listopada 2026
 
 ### Nowości

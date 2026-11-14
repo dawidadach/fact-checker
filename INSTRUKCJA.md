@@ -48,6 +48,12 @@ klucze, pobrane modele i historię.
   z rozmową (to daje wtyczce zgodę na nagrywanie tej karty bez dodatkowych okienek). Jeśli tego nie zrobisz,
   po **Start** pojawi się okno „Udostępnij kartę” – wybierz kartę i zostaw włączone udostępnianie dźwięku.
 
+**Zgoda na nagrywanie karty.** Przy pierwszym **Start** z dźwiękiem karty przeglądarka zapyta o zgodę na nagrywanie
+karty. Chrome opisuje ją jako „Odczytywanie i zmienianie wszystkich Twoich danych we wszystkich witrynach” – to jego
+stały tekst dla nagrywania karty (dlatego nie ma go już przy instalacji); wtyczka słucha tylko karty, na której
+klikniesz Start. Jeśli odmówisz, Start działa dalej przez okno „Udostępnij kartę”, a zgodę możesz dać później w
+**⚙ → Słuchanie na żywo → Zezwól na nagrywanie karty**. Mikrofon i ikonka w odtwarzaczu YouTube tej zgody nie potrzebują.
+
 **Dźwięk karty czy mikrofon?** „Dźwięk karty” słucha konkretnej karty (tej, którą masz przed sobą w chwili
 kliknięcia Start) – źródło w panelu ma jej tytuł, a gdy w tej karcie przełączysz film na YouTube, powstaje nowe źródło
 z nowym tytułem. „Mikrofon” słucha dźwięku z otoczenia (np. telewizora albo głośników) – wtyczka nie wie wtedy, co gra,
@@ -505,6 +511,8 @@ werdyktów, tabela mówców, wszystkie werdykty ze źródłami i obrazkami. **Dr
 - **Ikonka przy artykułach** (domyślnie wyłączona) daje wtyczce stały dostęp do serwisów z listy, które zostawisz
   zaznaczone (albo – przy „Wszędzie” – do wszystkich stron), tylko po to, żeby rozpoznać artykuł i pokazać ikonkę po
   najechaniu na tytuł. Artykuł jest czytany dopiero po kliknięciu ikonki.
+- **Nagrywanie dźwięku karty** to uprawnienie opcjonalne: przeglądarka pyta o nie przy pierwszym Start z dźwiękiem
+  karty, a nie przy instalacji (Chrome opisuje je jako „…wszystkie Twoje dane we wszystkich witrynach”).
 - **Pamiętaj klucze API po zamknięciu przeglądarki** – wyłącz, żeby klucze znikały po zamknięciu przeglądarki.
   „Usuń wszystkie klucze” kasuje je od razu. Klucze nie są szyfrowane – używaj kluczy z limitem wydatków.
 
