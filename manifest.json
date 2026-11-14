@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "short_name": "Fact Checker",
-  "version": "0.7.8",
+  "version": "0.7.9",
   "default_locale": "en",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwz2ktjWlVMrBydDzpdxVkdnR4qmI9w5zcDhZhKdfOX1QhU3xDyI/2Snr0NnKvrZA5Ln+BS6rDq4oYpz6g6Qrwk/6b60nSLs4tm/5jgLbmI+FRfCxNUYB0GlL9Gux60EgCLvx+qlg1d3f5owZtfTmAQoNDBNZxWgeUz7mU++VSnTHSjcJDaITogtVKWzKWpBs1f4lZJTxIJZULytzoIOSCk5fUGhnVTZGsOskxZXHr6Nng7PQNKqN/xbQLS0BGlP6IZt2yLOmx6VCNwdFlI57ZZRXHeBPdpi9VPUBeLo2ONgnmc3ceFJReHMDOcpcdOS80/ikQK6r95hty8DQXsEa9QIDAQAB",
   "description": "__MSG_extDescription__",
@@ -53,7 +53,7 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
-  "version_name": "0.7.8",
+  "version_name": "0.7.9",
   "optional_permissions": [
     "tabCapture"
   ],

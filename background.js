@@ -16,6 +16,7 @@ chrome.storage.onChanged.addListener((ch) => {
   if (JSON.stringify(postSitesOn(ch.settings.oldValue)) !== JSON.stringify(postSitesOn(ch.settings.newValue))) syncPostButtons();
   if (artSig(ch.settings.oldValue) !== artSig(ch.settings.newValue)) syncArticleButtons();
   if (mediaOn(ch.settings.oldValue) !== mediaOn(ch.settings.newValue)) syncMediaButtons();
+  if ((ch.settings.oldValue?.uiLang || "") !== (ch.settings.newValue?.uiLang || "")) broadcastLang(ch.settings.newValue?.uiLang);
 });
 const artSig = (s) => JSON.stringify(wantedOrigins(articleConfig(s)));
 
@@ -28,8 +29,8 @@ const hasSidePanel = !!chrome.sidePanel?.open;
 const manualPanel = () => { if (hasSidePanel) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {}); };
 manualPanel();
 // Po instalacji/aktualizacji: ikonki przy postach w otwartych kartach zastępujemy nową wersją skryptu.
-chrome.runtime.onInstalled.addListener(() => { manualPanel(); setupMenus(); syncPostButtons({ reinject: true }); syncArticleButtons({ reinject: true }); syncMediaButtons({ reinject: true }); });
-chrome.runtime.onStartup.addListener(() => { manualPanel(); syncPostButtons(); syncArticleButtons(); syncMediaButtons(); });
+chrome.runtime.onInstalled.addListener(() => { lockStorage(); manualPanel(); setupMenus(); syncPostButtons({ reinject: true }); syncArticleButtons({ reinject: true }); syncMediaButtons({ reinject: true }); });
+chrome.runtime.onStartup.addListener(() => { lockStorage(); manualPanel(); syncPostButtons(); syncArticleButtons(); syncMediaButtons(); });
 
 const PANEL_W = 440;
 async function openPanelWindow(tab) {
@@ -67,7 +68,17 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.url && isCallbackUrl(info.url)) handleCallback(info.url, tabId);
 });
 
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+// ---------- kto pisze: panel/strony wtyczki czy skrypt na stronie WWW ----------
+// Skrypty ikonek działają na cudzych stronach (Facebook, X, YouTube, serwisy, a przy „Wszędzie” – każda strona).
+// Strona normalnie ich nie widzi, ale przy luce w przeglądarce złośliwa strona mogłaby udawać nasz skrypt. Dlatego:
+// dane wtyczki (klucze API, token ChatGPT, historia) są niedostępne dla skryptów na stronach, a tło wykonuje
+// polecenia „uprzywilejowane” (token, logowanie, odbiór zleceń) tylko od stron samej wtyczki.
+const EXT_ORIGIN = chrome.runtime.getURL("");
+const fromExtension = (sender) => sender?.id === chrome.runtime.id && String(sender.url || "").startsWith(EXT_ORIGIN);
+const lockStorage = () => chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" }).catch((e) => console.warn(e));
+lockStorage();
+
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   const run = async () => {
     switch (msg?.type) {
       case "signIn": await startSignIn(); return { ok: true };
@@ -77,7 +88,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       default: return null;
     }
   };
-  if (!["signIn", "signOut", "account", "getToken"].includes(msg?.type)) return false;
+  if (!["signIn", "signOut", "account", "getToken"].includes(msg?.type) || !fromExtension(sender)) return false;
   run().then(reply, (e) => reply({ ok: false, error: e.message, code: e.code }));
   return true; // odpowiedź asynchroniczna
 });
@@ -131,8 +142,8 @@ function deliver(payload, tab) {
   });
 }
 // Panel odbiera całą listę naraz (po kolei z dopisywaniem – bez wyścigu).
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-  if (msg?.type !== "take-captures") return false;
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg?.type !== "take-captures" || !fromExtension(sender)) return false;
   clearBadges();
   serial(async () => {
     const { pendingCaptures: list = [] } = await chrome.storage.session.get("pendingCaptures");
@@ -274,6 +285,20 @@ async function syncScript({ id, file, want, exclude = [], stop, reinject = false
   }
 }
 
+// ---------- język ikonek na stronach ----------
+// Skrypty na stronach nie czytają ustawień (są dla nich zablokowane) – język dostają od tła, a po zmianie w ⚙ tło
+// rozsyła go do kart (karty bez naszych skryptów po prostu nie odpowiadają).
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg?.type !== "fc-ui-lang" || !sender.tab) return false;
+  chrome.storage.local.get("settings").then(({ settings }) => reply({ lang: settings?.uiLang || "" }), () => reply({ lang: "" }));
+  return true;
+});
+async function broadcastLang(lang) {
+  for (const tab of await chrome.tabs.query({}).catch(() => [])) {
+    if (tab.id != null && /^https?:/.test(tab.url || "")) chrome.tabs.sendMessage(tab.id, { type: "fc-ui-lang", lang: lang || "" }).catch(() => {});
+  }
+}
+
 // ---------- ikonka „sprawdź” przy tytułach artykułów (opcja w ustawieniach, domyślnie wyłączona) ----------
 // Skrypt ikonek (content/articles.js) działa tylko na serwisach z włączonej listy (albo wszędzie, jeśli tak
 // ustawisz) I tam, gdzie jest zgoda przeglądarki. Ten sam łańcuch co przy postach – bez „Duplicate script ID”.
@@ -330,14 +355,22 @@ async function articleButton(tab, msg, opened) {
 // Ocena zapamiętana przy wcześniejszym sprawdzeniu artykułu (tylko adres → ocena; wygasa z pamięcią werdyktów).
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg?.type !== "fc-article-mark-get" || !sender.tab?.id) return false;
-  lookupMark(msg).then((mark) => reply({ mark }), () => reply({ mark: null }));
+  lookupMark(markKeys(sender, String(msg.canonical || ""))).then((mark) => reply({ mark }), () => reply({ mark: null }));
   return true;
 });
-async function lookupMark({ url = "", canonical = "" } = {}) {
+// Tylko dla strony, która pyta (adres z karty, nie z wiadomości); adres kanoniczny – tylko z tego samego serwisu.
+function markKeys(sender, canonical) {
+  const url = sender.tab?.url || sender.url || "";
+  let host = "", canon = "";
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { return []; }
+  try { const c = new URL(canonical); if (c.hostname.replace(/^www\./, "") === host) canon = c.href; } catch { /* brak */ }
+  return [articleKey(url), articleKey(canon)];
+}
+async function lookupMark(keys) {
   const { settings, [MARKS_KEY]: marks } = await chrome.storage.local.get(["settings", MARKS_KEY]);
   const days = Number(settings?.memoryDays ?? 30);
   if (!(days > 0) || !marks) return null;
-  const m = findMark(marks, [articleKey(url), articleKey(canonical)], { maxAgeDays: days });
+  const m = findMark(marks, keys, { maxAgeDays: days });
   if (!m) return null;
   await langReady;
   const v = markView(m, t);

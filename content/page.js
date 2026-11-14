@@ -257,15 +257,16 @@
       shade.style.display = "none";
       Object.assign(box.style, { display: "block", left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px` });
     };
-    const down = (e) => { if (e.button !== 0 || e.composedPath().includes(bar)) return; e.preventDefault(); start = [e.clientX, e.clientY]; rect = null; };
+    // wycinek i wskazywanie: tylko prawdziwa mysz i klawiatura – skrypt strony nie zaznaczy niczego za Ciebie
+    const down = (e) => { if (!e.isTrusted || e.button !== 0 || e.composedPath().includes(bar)) return; e.preventDefault(); start = [e.clientX, e.clientY]; rect = null; };
     const move = (e) => {
-      if (!start) return;
+      if (!start || !e.isTrusted) return;
       const [x0, y0] = start;
       rect = { x: Math.min(x0, e.clientX), y: Math.min(y0, e.clientY), w: Math.abs(e.clientX - x0), h: Math.abs(e.clientY - y0) };
       draw();
     };
-    const up = () => {
-      if (!start) return;
+    const up = (e) => {
+      if (!start || !e.isTrusted) return;
       start = null;
       if (!rect || rect.w < 20 || rect.h < 20) { rect = null; draw(); return; }
       const r = rect;
@@ -275,7 +276,7 @@
       // dwie klatki, żeby nakładka zniknęła z ekranu przed zrzutem
       requestAnimationFrame(() => requestAnimationFrame(() => send({ kind: "area", text: "", area: r, imageCount: 1, imageSrcs: [""], meta: pageMeta(), captureId })));
     };
-    const key = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cleanup(); send({ cancelled: true }); } };
+    const key = (e) => { if (e.isTrusted && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cleanup(); send({ cancelled: true }); } };
     hostEl.addEventListener("mousedown", down);
     addEventListener("mousemove", move, true);
     addEventListener("mouseup", up, true);
@@ -393,11 +394,53 @@
 
   // ---------- artykuł (Readability = tryb czytnika) ----------
   const squash = (s) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  // Tekstu, którego czytelnik nie widzi, nie wysyłamy do sprawdzania: ukrytego stylem strony (display:none,
+  // visibility:hidden), schowanego poza ekranem albo w pudełku 1×1 px (np. „tylko dla czytników ekranu”). Strona
+  // mogłaby tak przemycić „instrukcję dla AI” albo zdania, których nie ma w widocznym artykule. Przezroczystości
+  // nie liczymy – serwisy często pokazują akapity z animacją dopiero przy przewijaniu.
+  function hiddenElements() {
+    const out = new Set(), memo = new Map();
+    const docW = Math.max(document.documentElement.scrollWidth, innerWidth);
+    const boxOf = (el) => { let e = el; while (e && getComputedStyle(e).display === "contents") e = e.parentElement; return e; };
+    const isHidden = (el) => {
+      if (memo.has(el)) return memo.get(el);
+      let h = false;
+      if (el.checkVisibility && !el.checkVisibility({ visibilityProperty: true })) h = true;
+      else {
+        const b = boxOf(el);
+        if (b) {
+          const r = b.getBoundingClientRect();
+          if (r.width * r.height <= 4) h = true;                                        // 1×1 px, zerowa czcionka
+          else if (r.right + scrollX <= 0 || r.bottom + scrollY <= 0 || r.left + scrollX >= docW) h = true; // poza stroną
+        }
+      }
+      memo.set(el, h);
+      return h;
+    };
+    const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const el = n.parentElement;
+      if (!el || !n.nodeValue.trim() || /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE)$/.test(el.tagName)) continue;
+      if (isHidden(el)) out.add(el);
+    }
+    return out;
+  }
+  // Kopia strony dla trybu czytnika – bez niewidocznych elementów (żywej strony nie zmieniamy).
+  function visibleClone() {
+    const doc = document.cloneNode(true);
+    let hidden;
+    try { hidden = hiddenElements(); } catch { return doc; }
+    if (!hidden.size) return doc;
+    const live = document.getElementsByTagName("*"), copy = [...doc.getElementsByTagName("*")];
+    if (live.length !== copy.length) return doc; // strona zmieniła się w międzyczasie – bez filtra
+    for (let i = 0; i < live.length; i++) if (hidden.has(live[i])) copy[i].remove();
+    return doc;
+  }
   function article() {
     const meta = pageMeta();
     let parsed = null;
     try {
-      if (typeof Readability === "function") parsed = new Readability(document.cloneNode(true), { charThreshold: 300 }).parse();
+      if (typeof Readability === "function") parsed = new Readability(visibleClone(), { charThreshold: 300 }).parse();
     } catch { parsed = null; }
     let text = "";
     if (parsed?.content) {
@@ -471,7 +514,7 @@
     };
     const ours = (e) => e.target === hostEl;
     const onMove = (e) => {
-      if (ours(e)) return;
+      if (ours(e) || !e.isTrusted) return;
       // pasek z podpowiedzią nie może zasłaniać tego, co wskazujemy
       const low = e.clientY > innerHeight - 110;
       bar.style.top = low ? "12px" : "auto";
@@ -497,8 +540,9 @@
       show();
       msg.textContent = (labels.added || "Queued: {n} · Shift+click for more · Esc to finish").replace("{n}", picked.length);
     };
-    const onClick = (e) => { if (ours(e)) return; swallow(e); if (cur) finish(cur, e.shiftKey || e.ctrlKey || e.metaKey); };
+    const onClick = (e) => { if (ours(e)) return; swallow(e); if (cur && e.isTrusted) finish(cur, e.shiftKey || e.ctrlKey || e.metaKey); };
     const onKey = (e) => {
+      if (!e.isTrusted) return;
       if (e.key === "Escape") { swallow(e); cleanup(); if (!picked.length) send({ cancelled: true }); }
       else if (e.key === "ArrowUp" && cur) {
         swallow(e);

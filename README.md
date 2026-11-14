@@ -115,6 +115,7 @@ verdict with sources:
   optional note as a hint – optionally with another provider as a second opinion. The card shows whether the verdict changed.
 - **Verdict memory:** the same text or image (a meme that keeps circulating) gets its earlier result instantly, at no cost.
   Every image is recognised on its own, also in another post; the same meme template with a different caption is not.
+  For an image with text, a quick model check first confirms the text is unchanged (a swapped year or word is caught).
 - **Date of the statement:** an old post or interview is judged by the facts of that time.
 
 ### Live debates and podcasts
@@ -216,7 +217,8 @@ English: an 11-second speech clip. On a GPU the models run faster and at higher 
 - Scam checks and source levels run in the browser; the CERT Polska list is downloaded whole, so nobody learns what you check.
 - With a local speech model, audio stays on your computer; only text goes to the model provider.
 - Installing shows no “all your data on all websites” warning: tab-audio recording (`tabCapture`, which Chrome describes that way) is optional and requested only on the first Start with tab audio; without it Start uses the “Share tab” window.
-- Keys and sign-in tokens stay in this browser. Details: [PRIVACY.md](PRIVACY.md).
+- Text hidden on a page (invisible to you) is left out of an article, and page text is passed to the model as data, never as instructions.
+- Keys and sign-in tokens stay in this browser and are out of reach of the extension's scripts on websites. Details: [PRIVACY.md](PRIVACY.md).
 
 ### Project structure
 
@@ -239,6 +241,7 @@ lib/tricks.js          rhetorical tricks: dictionary (PL/EN definitions and answ
 lib/sourcetier.js      source level from the domain (data, document, science, government, poll, media…)
 lib/reply.js           “Copy as reply”: prompts, tones, plain-text sources
 lib/memory.js          verdict memory: text hashes and image fingerprints
+lib/imageverify.js     verdict memory: has a remembered image's text changed? (short model check)
 lib/factcheckapi.js    Google Fact Check Tools (existing fact-checks)
 lib/capture.js         running the page script in a tab
 lib/shot.js            screenshots of the visible images / screen area
@@ -362,6 +365,7 @@ fakty historyczne), dostaje werdykt ze źródłami:
   werdykt się zmienił.
 - **Pamięć werdyktów:** ten sam tekst albo obrazek (mem, który krąży od tygodni) dostaje wcześniejszy wynik od razu, bez
   kosztów. Każdy obrazek jest rozpoznawany osobno, także w innym poście; ten sam szablon mema z innym napisem już nie.
+  Przy obrazku z tekstem krótkie zapytanie do modelu najpierw sprawdza, czy napis się nie zmienił (podmieniony rok albo słowo).
 - **Data wypowiedzi:** stary post czy wywiad jest oceniany według ówczesnych danych.
 
 ![Artykuł z money.pl sprawdzony w Operze: data publikacji, rodzaj treści „Wiadomość”, ocena całości „Rzetelny” i uwaga, czego nie udało się potwierdzić w źródle urzędowym](docs/demo-pl-article.webp)
@@ -467,7 +471,8 @@ Potem działa bez internetu i nic nie wychodzi z komputera.
   co sprawdzasz.
 - Przy lokalnym modelu mowy dźwięk zostaje na Twoim komputerze; do dostawcy modelu trafia tylko tekst.
 - Przy instalacji nie ma ostrzeżenia o „wszystkich Twoich danych we wszystkich witrynach”: nagrywanie dźwięku karty (`tabCapture`, które Chrome tak opisuje) jest opcjonalne – przeglądarka pyta o nie dopiero przy pierwszym Start z dźwiękiem karty, a bez zgody Start działa przez okno „Udostępnij kartę”.
-- Klucze i tokeny logowania zostają w tej przeglądarce. Szczegóły: [PRIVACY.md](PRIVACY.md).
+- Tekst ukryty na stronie (niewidoczny dla Ciebie) nie trafia do sprawdzenia artykułu, a tekst ze strony idzie do modelu jako dane, nigdy jako polecenia.
+- Klucze i tokeny logowania zostają w tej przeglądarce i są poza zasięgiem skryptów wtyczki na stronach. Szczegóły: [PRIVACY.md](PRIVACY.md).
 
 ### Budowanie i testy
 

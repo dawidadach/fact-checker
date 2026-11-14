@@ -117,7 +117,8 @@ Trzy sposoby:
 - **Zaznaczenie** – zaznacz tekst → prawy przycisk → **Sprawdź fakty: „…”**. Albo skrót **Alt+Shift+F**
   (bez zaznaczenia skrót włącza tryb wskazywania). Działa też w PDF-ach otwartych w przeglądarce (bez podświetlania).
 - **Artykuł** – przycisk **📄 Artykuł** w panelu albo prawy przycisk na stronie → **Sprawdź fakty w tym artykule**.
-  Wtyczka bierze tylko treść artykułu (tryb czytnika): bez menu, reklam, polecanych linków i komentarzy.
+  Wtyczka bierze tylko treść artykułu (tryb czytnika): bez menu, reklam, polecanych linków i komentarzy – i bez
+  tekstu ukrytego na stronie (niewidocznego dla Ciebie), którym strona mogłaby coś podpowiadać modelowi.
 - **Wskaż post** – przycisk **👆 Wskaż post** albo prawy przycisk → **Wskaż post lub fragment do sprawdzenia**.
   Najedź na post (podświetli się ramką) i kliknij. **Shift+klik** – dodaj i wskazuj dalej (kilka postów/komentarzy
   po kolei, dodane mają zieloną ramkę); ↑/↓ – większy/mniejszy fragment; Esc – koniec.
@@ -469,13 +470,17 @@ model ustala mówcę z kontekstu (tylko gdy jest pewny).
 ## Pamięć werdyktów
 
 Ten sam tekst albo obrazek (np. mem, który krąży od tygodni) sprawdzony ponownie dostaje wynik **od razu z pamięci**
-– z datą sprawdzenia, bez kosztów, czekania i bez okna podglądu (nic nie jest wysyłane).
+– z datą sprawdzenia, bez czekania na sprawdzenie i bez okna podglądu. Tekst z pamięci nic nie kosztuje i nic nie jest
+wysyłane; przy obrazku z napisem wtyczka najpierw krótko porównuje napis (patrz niżej).
 
 - **Każdy obrazek jest rozpoznawany osobno**: mem kliknięty sam rozpozna się także wtedy, gdy wcześniej sprawdzałeś
   go jako część posta (i odwrotnie). Znany obrazek w nowym poście: wynik obrazka z pamięci, do modelu idzie tylko tekst.
 - Obrazki rozpoznawane są po „odcisku” – zrzut w innym rozmiarze albo z inną kompresją pasuje, ale ten sam szablon
-  mema z innym napisem już nie. Drobna zmiana małego tekstu (np. jednej cyfry drobnym drukiem) może przejść
-  niezauważona – porównaj wtedy „Tekst odczytany z obrazka” z tym, co widzisz.
+  mema z innym napisem już nie. Odcisk nie widzi jednak drobnej zmiany napisu (rok, cyfra, jedno słowo), więc gdy
+  obrazek z tekstem pasuje do zapamiętanego, wtyczka **krótko pyta model, czy napis jest ten sam** (jedno małe
+  zapytanie, bez wyszukiwania). Jest różnica – panel mówi, co się zmieniło, i sprawdza obrazek od nowa. Gdy zapytać
+  się nie da (limit kosztów, błąd sieci, model bez obrazków), dostajesz wynik z pamięci – porównaj wtedy „Tekst
+  odczytany z obrazka” z tym, co widzisz.
 - Przy takim źródle jest przycisk **↻ Sprawdź ponownie**, który wymusza świeże sprawdzenie (z podglądem).
 - Po aktualizacji wtyczka jednorazowo dodaje do pamięci to, co sprawdzałeś wcześniej (z historii).
 W ⚙ ustawisz, jak długo wyniki są pamiętane (domyślnie 30 dni, 0 = wyłączone), i wyczyścisz pamięć.
@@ -541,7 +546,7 @@ Wtyczka sama rozpoznaje przeglądarkę (`chrome.sidePanel` jest tylko w Chrome).
 Najważniejsze pliki: `lib/providers.js` (Gemini / Claude / OpenRouter), `lib/llm.js` (OpenAI), `lib/factcheck.js`
 (prompt i schemat odpowiedzi), `lib/history.js` (sesje, eksport ocen), `lib/capture.js` + `content/page.js` (tekst i
 obrazki ze stron, zamazywanie, data filmu), `lib/shot.js` (zrzuty obrazków), `lib/pricing.js` (cenniki i tryby),
-`lib/factcheckapi.js` (Google Fact Check), `lib/memory.js` (pamięć werdyktów), `lib/report.js` (raport),
+`lib/factcheckapi.js` (Google Fact Check), `lib/memory.js` (pamięć werdyktów), `lib/imageverify.js` (czy napis na zapamiętanym obrazku się nie zmienił), `lib/report.js` (raport),
 `lib/reply.js` (odpowiedź do wklejenia), `lib/summary.js` (ocena całości), `lib/tricks.js` (chwyty erystyczne), `lib/sourcetier.js` (poziom źródła), `lib/scam.js` (sygnały oszustwa),
 `lib/certlist.js` (Lista Ostrzeżeń CERT Polska),
 `lib/vendor/Readability.js` (Mozilla, Apache 2.0).

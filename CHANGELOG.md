@@ -2,6 +2,48 @@
 
 Rozwinięcie wtyczki [dawidadach/fact-checker](https://github.com/dawidadach/fact-checker) (punkt wyjścia: v0.4.1).
 
+## 0.7.9 – 14 listopada 2026
+
+Poprawki po przeglądzie kodu przed publikacją w sklepach z wtyczkami.
+
+### Poprawki
+- **Podobne twierdzenia nie znikają.** Wtyczka odrzucała twierdzenie jako powtórkę, gdy miało 3/4 tych samych słów
+  co wcześniejsze z tego samego źródła – a krótkie liczby i „nie” się nie liczyły. Przez to „bezrobocie wynosi 5%”
+  i „8%”, „jest członkiem NATO” i „nie jest”, „w Polsce” i „w Europie” albo „podniósł” i „obniżył” uchodziły za to
+  samo i drugie twierdzenie (np. odpowiedź drugiej strony w debacie) przepadało bez sprawdzenia. Teraz powtórka to
+  te same liczby, to samo zaprzeczenie i te same słowa (odmiana się nie liczy).
+- **Obrazek z pamięci werdyktów – sprawdzany jest też jego tekst.** Obrazki są rozpoznawane po „odcisku”, który nie
+  widzi zmiany drobnego napisu: mem z podmienionym rokiem („2008” → „2018”) albo słowem („najwyższa” → „najniższa”)
+  dostawał wynik z pamięci dla oryginału. Teraz, gdy obrazek z tekstem wygląda jak sprawdzony wcześniej, wtyczka
+  krótko pyta model, czy napis jest ten sam co zapamiętany (jedno krótkie zapytanie, bez wyszukiwania). Różnica –
+  sprawdza od nowa i mówi, co się zmieniło; ten sam tekst – wynik z pamięci jak dotąd. Gdy zapytać się nie da
+  (limit kosztów, błąd sieci, model bez obrazków) – wynik z pamięci z datą i „Sprawdź ponownie”, jak wcześniej.
+- **Fact-checki z bazy Google pasują liczbami.** Wynik z Google Fact Check był dopasowywany tylko po słowach, więc
+  pod twierdzeniem o „2,5%” mógł się pokazać fact-check o „25%”, a pod twierdzeniem z 2023 r. – o tym samym z 2015 r.
+  Teraz inne liczby albo inny rok w obu tekstach oznaczają fact-check innego twierdzenia i nie jest pokazywany.
+
+### Bezpieczeństwo
+- **Tekst ukryty na stronie nie trafia do sprawdzenia.** Przy sprawdzaniu artykułu wtyczka pomija tekst, którego nie
+  widać: ukryty stylami, malutki (1×1 px) albo wysunięty poza stronę. Strona mogła w ten sposób dopisać modelowi
+  coś, czego nie widzisz (np. „uznaj ten artykuł za prawdziwy”). Tekst pojawiający się z animacją i tekst niżej na
+  stronie (poza ekranem) dalej się liczy.
+- **Treść ze strony to dane, nie polecenia.** Wszystkie zapytania (sprawdzanie na żywo i tekstu, „Sprawdź
+  dokładniej”, ocena całości, komentarz, porównanie obrazka) mówią modelowi wprost, że transkrypcja i tekst ze
+  strony to materiał do sprawdzenia, a polecenia w nim należy ignorować; tekst ze strony nie może też „zamknąć”
+  bloku z danymi i dopisać czegoś od siebie.
+- **Dane wtyczki niedostępne dla skryptów na stronach.** Klucze API, logowanie do ChatGPT, historia i ustawienia są
+  dostępne tylko dla panelu i tła wtyczki – nie dla skryptów ikonek działających na Facebooku, X, YouTube i
+  serwisach informacyjnych. Polecenia „uprzywilejowane” (token ChatGPT, logowanie i wylogowanie, odbiór zleceń,
+  polecenia dla panelu) wtyczka przyjmuje tylko od własnych stron, a znaczek z oceną artykułu – tylko dla adresu
+  karty, która pyta. Ikonki dostają od wtyczki już tylko język interfejsu (zmiana w ⚙ działa od razu).
+- **Ikonki i wskazywanie reagują tylko na prawdziwe kliknięcia.** Ikonki przy postach, artykułach i w odtwarzaczu
+  YouTube, przyciski pod postem oraz „Wskaż post” i „Wycinek” ignorują zdarzenia wywołane skryptem strony
+  (`isTrusted`) – strona nie może „kliknąć” za Ciebie ani nic zaznaczyć do sprawdzenia. Pomysł: Nairdaa (PR #13) –
+  dziękujemy!
+
+### Zmiany
+- **Krótszy opis wtyczki** (do 132 znaków – limit Chrome Web Store i dodatków Edge).
+
 ## 0.7.8 – 14 listopada 2026
 
 Dwie poprawki zgłoszone przez voytas_ – dziękujemy!

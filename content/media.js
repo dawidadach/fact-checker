@@ -46,7 +46,9 @@
     const next = pref === "pl" || pref === "en" ? pref : /^pl\b/i.test(uiLang()) ? "pl" : "en";
     if (next !== lang) { lang = next; paint(); }
   };
-  const onStorage = (ch) => { if (ch.settings && alive()) applyLang(ch.settings.newValue?.uiLang); };
+  // Język z ustawień wtyczki podaje tło (skrypty na stronach nie mają dostępu do zapisanych danych wtyczki).
+  const askLang = () => { try { chrome.runtime.sendMessage({ type: "fc-ui-lang" }).then((r) => applyLang(r?.lang)).catch(() => {}); } catch { /* wtyczka przeładowana */ } };
+  const onLangMsg = (m) => { if (m?.type === "fc-ui-lang" && alive()) applyLang(m.lang); };
 
   // ---------- przycisk ----------
   // Ikony Lucide (ISC): shield-check, loader-circle.
@@ -84,7 +86,8 @@
     if (float) b.className = "float";
     // kliknięcie i klawisze nie mogą dojść do odtwarzacza (pauza, skróty klawiszowe YouTube)
     for (const ev of ["pointerdown", "mousedown", "pointerup", "mouseup", "dblclick", "auxclick", "keydown", "keyup"]) b.addEventListener(ev, (e) => e.stopPropagation());
-    b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); press(); });
+    // tylko prawdziwe kliknięcie (mysz, klawiatura) – zdarzenie wywołane skryptem strony nic nie robi
+    b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (!e.isTrusted) return; press(); });
     sh.append(st, b);
     btn = { h, b, float };
     paint();
@@ -253,8 +256,8 @@
     running = true;
     document.querySelectorAll(TAG).forEach((n) => { if (n.dataset.fcGen !== GEN) n.remove(); });
     try {
-      chrome.storage.local.get("settings").then(({ settings }) => applyLang(settings?.uiLang)).catch(() => {});
-      chrome.storage.onChanged.addListener(onStorage);
+      askLang();
+      chrome.runtime.onMessage.addListener(onLangMsg);
       chrome.runtime.onConnect.addListener(onConnect);
       chrome.runtime.onMessage.addListener(onMessage);
     } catch { /* poza wtyczką */ }
@@ -266,7 +269,7 @@
     clearInterval(poll);
     finish();
     try {
-      chrome.storage.onChanged.removeListener(onStorage);
+      chrome.runtime.onMessage.removeListener(onLangMsg);
       chrome.runtime.onConnect.removeListener(onConnect);
       chrome.runtime.onMessage.removeListener(onMessage);
     } catch { /* wtyczka przeładowana */ }
