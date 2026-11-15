@@ -123,7 +123,8 @@ verdict with sources:
 - **Tab audio or microphone**: open the video or stream, press **Start**, and verdicts appear as people speak.
 - ✓ **Icon in the YouTube player** (optional): one click on the icon next to the subtitles button starts listening to that
   video right away – no Start, no picking a tab. The sound is taken straight from the video (it keeps playing normally,
-  the tab is not muted); click again to stop. Off by default; the browser asks for access to youtube.com only.
+  the tab is not muted); click again to stop. Listening also stops when the video ends or the tab is closed, so autoplay
+  doesn't keep checking (and spending) on the next videos. Off by default; the browser asks for access to youtube.com only.
 - Speech is turned into text by a **local model on your computer** (free, offline) – the first **Start** offers the right one
   and downloads it – or by OpenAI.
 - **Speaking now:** mark who is speaking; verdicts, tricks and the report are attributed to that person.
@@ -385,7 +386,8 @@ fakty historyczne), dostaje werdykt ze źródłami:
 - **Dźwięk karty albo mikrofon**: otwórz film albo transmisję, kliknij **Start** – werdykty pojawiają się w trakcie rozmowy.
 - ✓ **Ikonka w odtwarzaczu YouTube** (opcja): jedno kliknięcie ikonki obok przycisku napisów od razu włącza słuchanie tego
   filmu – bez Start i bez wybierania karty. Dźwięk idzie prosto z filmu (film gra normalnie, karta nie jest wyciszana);
-  ponowne kliknięcie zatrzymuje. Domyślnie wyłączona; przeglądarka pyta o dostęp tylko do youtube.com.
+  ponowne kliknięcie zatrzymuje. Słuchanie kończy się też, gdy film się skończy albo zamkniesz kartę – autoodtwarzanie
+  nie sprawdza (i nie zużywa tokenów) na kolejnych filmach. Domyślnie wyłączona; przeglądarka pyta o dostęp tylko do youtube.com.
 - Mowę zamienia na tekst **lokalny model na Twoim komputerze** (za darmo, bez internetu) – przy pierwszym **Start** wtyczka
   sama zaproponuje odpowiedni i go pobierze – albo OpenAI.
 - **Teraz mówi:** wskazujesz, kto mówi; werdykty, chwyty i raport przypisują wypowiedzi tej osobie.

@@ -1,6 +1,6 @@
 # Polityka prywatności – Fact Checker
 
-*Wersja z 14 listopada 2026 r. (wtyczka 0.7.9). English version below.*
+*Wersja z 15 listopada 2026 r. (wtyczka 0.7.10). English version below.*
 
 Fact Checker to wtyczka do przeglądarki (Chrome, Edge, Opera), która sprawdza fakty w tym, co oglądasz i czytasz. Nie ma własnego serwera: nie zbiera statystyk, nie wysyła niczego autorom i nie ma kont użytkowników. Dane trafiają tylko do usług, które sam wybierzesz w ustawieniach, i tylko wtedy, gdy wtyczka wykonuje to, o co prosisz.
 
@@ -95,7 +95,7 @@ Pytania i zgłoszenia: zakładka Issues w repozytorium projektu na GitHubie.
 
 # Privacy policy – Fact Checker
 
-*Version of 14 November 2026 (extension 0.7.9).*
+*Version of 15 November 2026 (extension 0.7.10).*
 
 Fact Checker is a browser extension (Chrome, Edge, Opera) that fact-checks what you watch and read. It has no server of its own: no analytics, nothing is sent to its authors, and there are no user accounts. Data goes only to the services you choose in the settings, and only while the extension does what you asked for.
 

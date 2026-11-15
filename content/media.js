@@ -21,6 +21,7 @@
   const WAIT_MS = 3 * 60_000; // tyle czekamy, aż panel zacznie słuchać (np. pobieranie modelu mowy)
   const BUF_CHUNKS = Math.ceil((30 * SR) / 4096); // do 30 s dźwięku czeka, aż panel się połączy
   const SILENT_SEC = 8; // film gra, a z odtwarzacza płyną same zera → podpowiedź w panelu
+  const END_CHECK_MS = 1500; // po „ended”: tyle czekamy, czy to koniec filmu, czy tylko koniec reklamy
 
   // ---------- teksty (język interfejsu z ustawień wtyczki) ----------
   const DICT = {
@@ -30,6 +31,7 @@
       reload: "Fact Checker został zaktualizowany – odśwież stronę, żeby znów słuchać filmów jednym kliknięciem.",
       noVideo: "Fact Checker: nie widzę tu filmu.", noPanel: "Fact Checker nie zaczął słuchać – otwórz panel wtyczki (ikona na pasku).",
       failed: "Fact Checker: nie udało się wziąć dźwięku z tego filmu – użyj Start w panelu.",
+      ended: "Fact Checker: film się skończył – przestaję słuchać. Kolejny film? Kliknij ikonkę jeszcze raz.",
     },
     en: {
       idle: "Fact Checker: listen to and fact-check this video", connecting: "Fact Checker: starting to listen…",
@@ -37,6 +39,7 @@
       reload: "Fact Checker was updated – reload the page to listen to videos with one click again.",
       noVideo: "Fact Checker: there is no video here.", noPanel: "Fact Checker did not start listening – open the extension's panel (toolbar icon).",
       failed: "Fact Checker: couldn't take the sound from this video – use Start in the panel.",
+      ended: "Fact Checker: the video ended – stopped listening. Next video? Click the icon again.",
     },
   };
   const uiLang = () => { try { return chrome.i18n.getUILanguage(); } catch { return navigator.language || "en"; } };
@@ -160,8 +163,27 @@
     cap = { ctx, node, video: null, stream: null, src: null, key: "" };
     attach(video);
   }
+  // Koniec filmu kończy słuchanie – autoodtwarzanie kolejnego filmu (np. w karcie w tle) nie może po cichu
+  // zużywać tokenów. Reklama też kończy się zdarzeniem „ended”, ale potem ten sam film gra dalej: dlatego chwilę
+  // czekamy – ten sam film i gra = słuchamy dalej; inny film (autoodtwarzanie) albo stoi na końcu = koniec.
+  // Film zmieniony kliknięciem w trakcie nie kończy się zdarzeniem „ended” – wtedy słuchanie trwa (nowe źródło).
+  const videoId = () => new URLSearchParams(location.search).get("v") || location.pathname;
+  function onEnded() {
+    if (!cap || mode !== "listening" || adShowing()) return;
+    const id = videoId();
+    setTimeout(() => {
+      if (!cap || mode !== "listening") return;
+      const v = cap.video;
+      if (videoId() === id && v && !v.paused && !v.ended) return;
+      try { port?.postMessage({ type: "ended" }); } catch { /* panel już rozłączony */ }
+      finish();
+      note(L().ended);
+    }, END_CHECK_MS);
+  }
   // Film w tej samej karcie się zmienia (YouTube nie przeładowuje strony): ten sam element, nowe ścieżki dźwięku.
   function attach(video) {
+    cap.video?.removeEventListener("ended", onEnded);
+    video.addEventListener("ended", onEnded);
     cap.video = video;
     cap.stream = video.captureStream();
     cap.stream.addEventListener("addtrack", relink);
@@ -205,6 +227,7 @@
     if (cap) {
       cap.src?.disconnect();
       cap.stream?.removeEventListener("addtrack", relink);
+      cap.video?.removeEventListener("ended", onEnded);
       cap.ctx.close().catch(() => {});
     }
     cap = null;

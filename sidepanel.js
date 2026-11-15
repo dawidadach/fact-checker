@@ -1878,13 +1878,20 @@ function lockSource(on) {
 }
 
 // ---------- nagrywana karta: zmiana filmu / tytułu ----------
-chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   if (!state.running || !(info.url || info.title)) return;
   const src = findSource(state.audioSrcId);
   if (src?.kind !== "tab" || src.tabId !== tabId) return;
   if (info.url && !sameUrl(info.url, src.url)) {
+    // nowy film w karcie, na której Cię nie ma = autoodtwarzanie – koniec słuchania zamiast sprawdzania kolejnych filmów
+    if (!(await userInTab(tab))) { listeningEnded("autoplay"); return; }
+    // ikonka w odtwarzaczu: koniec filmu + autoodtwarzanie zgłasza strona (chwilę po „ended”) – nie zakładamy
+    // wtedy pustego źródła dla filmu, którego już nie słuchamy
+    if (state.pageAudio) await new Promise((r) => setTimeout(r, 2000));
+    if (!state.running || findSource(state.audioSrcId) !== src) return;
+    tab = (await chrome.tabs.get(tabId).catch(() => null)) || tab; // tytuł mógł się zmienić w czasie sprawdzania
     // inny film w tej samej karcie: dotychczasowy tekst zostaje przy starym źródle, nowy idzie do nowego
-    const next = addSource({ kind: "tab", title: cleanTitle(tab.title), url: info.url, tabId, speakers: src.speakers || [] });
+    const next = addSource({ kind: "tab", title: cleanTitle(tab.title), url: tab.url || info.url, tabId, speakers: src.speakers || [] });
     state.audioSrcId = next.id;
     setTimeout(() => detectMediaDate(next), 2500); // YouTube podmienia metadane chwilę po zmianie adresu
     const g = groupEl(next.id);
@@ -2754,12 +2761,13 @@ async function start({ page = null } = {}) {
     tabInfo = await chrome.tabs.get(page.tabId);
     state.pageAudio = await connectPageAudio(page.tabId, {
       onSilent: () => banner(esc(t("err.pageSilent"))),
-      onEnd: () => { if (state.running) stop(); },
+      onEnd: (reason) => listeningEnded(reason),
     });
     return state.pageAudio.stream;
   };
   const common = {
     language: S.language,
+    onEnd: (reason) => listeningEnded(reason),
     onText: addText,
     onStatus: (t) => setStatus(t),
     onError: (e) => {
@@ -2863,11 +2871,37 @@ async function start({ page = null } = {}) {
   state.timer = setInterval(() => runCheck(), S.intervalSec * 1000);
 }
 
+// Słuchanie skończyło się samo: zamknięta karta, koniec filmu, autoodtwarzanie w karcie w tle albo przeglądarka
+// zakończyła nagrywanie karty. Panel zatrzymuje się jak po Stop (zapis sesji, ostatni fragment) i mówi dlaczego –
+// wcześniej przy „Dźwięku karty” dalej pokazywał, że słucha, choć nic już nie nagrywał.
+const END_NOTES = { tabClosed: "live.endTabClosed", videoEnded: "live.endVideo", autoplay: "live.endAutoplay", recordingEnded: "live.endRecording" };
+async function listeningEnded(reason = "") {
+  if (!state.running) return;
+  const tabId = findSource(state.audioSrcId)?.tabId;
+  stop(); // od razu – strumień już się skończył, nagrywanie nie może ruszyć z następnym kawałkiem
+  if ((!reason || reason === "recordingEnded") && tabId != null) {
+    await new Promise((r) => setTimeout(r, 300)); // zamykana karta znika chwilę po końcu nagrania
+    if (!(await chrome.tabs.get(tabId).catch(() => null))) reason = "tabClosed";
+  }
+  if (END_NOTES[reason] && !state.running) banner(esc(t(END_NOTES[reason])));
+}
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (state.running && findSource(state.audioSrcId)?.tabId === tabId) listeningEnded("tabClosed");
+});
+// Czy użytkownik jest na tej karcie (aktywna karta okna, w którym był ostatnio)? Nowy film w karcie, na której
+// go nie ma, to autoodtwarzanie – przy „Dźwięku karty” wtyczka nie widzi samego filmu, więc rozpoznaje to po tym.
+async function userInTab(tab) {
+  if (!tab?.active) return false;
+  const w = await chrome.windows.getLastFocused({ windowTypes: ["normal"] }).catch(() => null);
+  return !w || w.id === tab.windowId;
+}
+
 async function stop() {
   state.running = false;
   lockSource(false);
   renderSpeakerBar();
   clearInterval(state.timer);
+  const tr = state.transcriber;
   state.transcriber?.stop();
   state.transcriber = null;
   state.pageAudio?.stop(); // ikonka w odtwarzaczu wraca do „słuchaj”
@@ -2882,6 +2916,11 @@ async function stop() {
   // Dokończ to, co zostało (po zakończeniu trwającego sprawdzania), potem zapisz sesję.
   for (let i = 0; state.busy && i < 600; i++) await new Promise((r) => setTimeout(r, 500));
   if (state.running) return; // ktoś w międzyczasie kliknął Start
+  // Ostatni kawałek nagrania wraca z transkrypcji chwilę po Stop – czekamy na niego, żeby sprawdzić go teraz,
+  // a nie przy następnym Start (może godziny później i przy innym źródle).
+  await new Promise((r) => setTimeout(r, 400));
+  await Promise.race([tr?.queue, new Promise((r) => setTimeout(r, 20_000))]).catch(() => {});
+  if (state.running) return;
   await runCheck({ force: true });
   await saveSessionNow();
   if (S.autoExport && session.id && hasContent(stateContent())) downloadMarkdown(snapshot()).catch((e) => console.error(e));

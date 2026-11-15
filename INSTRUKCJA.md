@@ -71,7 +71,9 @@ tytuł filmu, a werdykty pojawiają się jak przy Start. W trakcie słuchania ik
 
 Dźwięk wtyczka bierze **prosto z odtwarzacza** – film gra normalnie, karta nie jest wyciszana, a dźwięk innych kart
 i powiadomień nie trafia do transkrypcji. W czasie reklamy i pauzy nic nie idzie dalej (nie płacisz za ciszę).
-Gdy w tej samej karcie przejdziesz do kolejnego filmu, słuchanie trwa dalej, a w panelu powstaje nowe źródło.
+Gdy w tej samej karcie sam klikniesz inny film, słuchanie trwa dalej, a w panelu powstaje nowe źródło. **Gdy film się
+skończy, słuchanie się kończy** – autoodtwarzanie kolejnego filmu nie przedłuża sprawdzania (ani wydatków); żeby słuchać
+następnego, kliknij ikonkę jeszcze raz. Zamknięcie karty też kończy słuchanie.
 Zamiana mowy na tekst działa tak samo jak przy Start: model lokalny albo OpenAI (⚙). Jeśli nie masz jeszcze modelu,
 po kliknięciu pojawi się okienko jego wyboru, a film zacznie być słuchany po **Zacznij słuchać**.
 
@@ -264,6 +266,12 @@ Nowa sesja zaczyna się tylko, gdy:
 
 Zamknięcie i ponowne otwarcie panelu nie zaczyna nowej sesji – ostatnia wraca sama, jeśli przerwa była krótsza.
 Ten sam film po Stop/Start to dalej to samo źródło; inny film – nowe źródło w tej samej sesji.
+
+**Kiedy słuchanie kończy się samo** (panel mówi dlaczego, zapisuje sesję i sprawdza ostatni nagrany fragment):
+- zamknięta słuchana karta albo zakończone nagrywanie karty („Zatrzymaj udostępnianie”),
+- ikonka w odtwarzaczu: film się skończył,
+- „Dźwięk karty”: w słuchanej karcie sam zaczął się nowy film, gdy byłeś na innej karcie lub w innym oknie
+  (autoodtwarzanie). Gdy sam przejdziesz do innego filmu w tej karcie, słuchanie trwa – to nowe źródło.
 
 - **Historia** (ikona zegara obok ustawień): lista sesji (tytuł = pierwsze źródło, „(+2)” = ile jeszcze), wyszukiwarka,
   **Otwórz**, **Eksport .md** (sekcja na każde źródło), **Raport**, **Usuń**. Otwarta sesja przyjmuje kolejne sprawdzenia.
