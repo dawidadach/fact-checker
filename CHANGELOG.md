@@ -2,7 +2,18 @@
 
 Rozwinięcie wtyczki [dawidadach/fact-checker](https://github.com/dawidadach/fact-checker) (punkt wyjścia: v0.4.1).
 
-## W przygotowaniu (następna wersja)
+## 0.7.10 – 15 listopada 2026
+
+### Poprawki
+- **Zamknięcie słuchanej karty kończy słuchanie.** Przy „Dźwięku karty” (Start) po zamknięciu karty – albo kliknięciu
+  „Zatrzymaj udostępnianie” – nagrywanie się kończyło, ale panel dalej pokazywał, że słucha (kropka, przycisk Stop),
+  sesja nie była zamykana, a ostatni nagrany fragment czekał i był sprawdzany dopiero przy następnym Start – czasem
+  godziny później i przy innym źródle. Teraz panel zatrzymuje się jak po Stop, mówi dlaczego i od razu sprawdza
+  ostatni fragment. Zgłoszenie od użytkownika – dziękujemy!
+- **Autoodtwarzanie nie przedłuża słuchania.** Słuchanie było przypięte do karty, więc gdy YouTube sam włączał kolejne
+  filmy (np. w karcie w tle), wtyczka sprawdzała je dalej i zużywała tokeny. Teraz: ikonka w odtwarzaczu – koniec filmu
+  kończy słuchanie (koniec reklamy – nie); „Dźwięk karty” – nowy film, który sam zaczął się w karcie, na której Cię nie
+  ma, kończy słuchanie. Film wybrany samemu w trakcie słuchania dalej jest słuchany (nowe źródło).
 
 ### Zmiany
 - **Licencja GPL-3.0.** Kod wtyczki jest na licencji GNU GPL w wersji 3 (plik LICENSE, dołączony też do paczek):
