@@ -272,10 +272,20 @@ npm run build    # dist/fact-checker-chrome.zip, dist/fact-checker-edge.zip, dis
 - **Inter** font (rsms/inter) – SIL Open Font License 1.1, `fonts/Inter-OFL.txt`.
 - **Lucide** icons – ISC License, `lib/LUCIDE-LICENSE.txt`.
 - **Mozilla Readability** – Apache License 2.0 (`lib/vendor/`).
+- **Transformers.js** (@huggingface/transformers) – Apache License 2.0, `vendor/LICENSE-transformers.txt`.
+- **ONNX Runtime Web** – MIT License, `vendor/LICENSE-onnxruntime.txt`.
 
 ### Authors
 
 Fact Checker is developed by [Dawid Adach](https://github.com/dawidadach) and [Wojciech Kałużny](https://github.com/wojciechkaluzny-ctrl).
+
+### License
+
+Copyright © 2026 Dawid Adach and Wojciech Kałużny.
+
+Fact Checker is free software, licensed under the **GNU General Public License, version 3** (GPL-3.0) – see [LICENSE](LICENSE).
+You may use, study, change and share it; if you distribute a modified version, it must stay under the GPL-3.0 with its
+source code available. Third-party components above keep their own licences.
 
 ### Status
 
@@ -486,10 +496,20 @@ npm run build    # dist/fact-checker-chrome.zip, dist/fact-checker-edge.zip, dis
 - Czcionka **Inter** (rsms/inter) – SIL Open Font License 1.1, `fonts/Inter-OFL.txt`.
 - Ikony **Lucide** – licencja ISC, `lib/LUCIDE-LICENSE.txt`.
 - **Mozilla Readability** – licencja Apache 2.0 (`lib/vendor/`).
+- **Transformers.js** (@huggingface/transformers) – licencja Apache 2.0, `vendor/LICENSE-transformers.txt`.
+- **ONNX Runtime Web** – licencja MIT, `vendor/LICENSE-onnxruntime.txt`.
 
 ### Autorzy
 
 Fact Checkera rozwijają [Dawid Adach](https://github.com/dawidadach) i [Wojciech Kałużny](https://github.com/wojciechkaluzny-ctrl).
+
+### Licencja
+
+Copyright © 2026 Dawid Adach i Wojciech Kałużny.
+
+Fact Checker to wolne oprogramowanie na licencji **GNU General Public License w wersji 3** (GPL-3.0) – zobacz [LICENSE](LICENSE).
+Możesz go używać, poznawać, zmieniać i udostępniać; jeśli rozpowszechniasz zmienioną wersję, musi ona zostać na GPL-3.0
+i z dostępnym kodem źródłowym. Zasoby zewnętrzne wymienione wyżej mają własne licencje.
 
 ### Stan projektu
 

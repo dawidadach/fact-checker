@@ -2,6 +2,16 @@
 
 Rozwinięcie wtyczki [dawidadach/fact-checker](https://github.com/dawidadach/fact-checker) (punkt wyjścia: v0.4.1).
 
+## W przygotowaniu (następna wersja)
+
+### Zmiany
+- **Licencja GPL-3.0.** Kod wtyczki jest na licencji GNU GPL w wersji 3 (plik LICENSE, dołączony też do paczek):
+  można go używać, zmieniać i udostępniać, ale zmienione wersje muszą zostać otwarte na tej samej licencji.
+  W README dopisane licencje Transformers.js i ONNX Runtime Web.
+- **Paczka do sklepów z wtyczkami:** `node scripts/build.mjs opera --store` (także `chrome`, `edge`) robi zip do
+  wysłania do sklepu – pliki w katalogu głównym zipa, bez pola `key` (sklep nadaje własny identyfikator) i bez
+  dokumentacji, której wtyczka nie używa.
+
 ## 0.7.9 – 14 listopada 2026
 
 Poprawki po przeglądzie kodu przed publikacją w sklepach z wtyczkami.
