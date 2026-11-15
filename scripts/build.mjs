@@ -1,6 +1,9 @@
 // Buduje paczki wtyczki dla Chrome, Edge i Opery z jednego kodu źródłowego.
 //   node scripts/build.mjs            → dist/fact-checker-{chrome,edge,opera}/ (+ .zip, jeśli jest `zip`)
 //   node scripts/build.mjs opera      → tylko Opera
+//   node scripts/build.mjs opera --store → paczka do sklepu: dist/store/fact-checker-opera-<wersja>.zip
+//     (pliki w katalogu głównym zipa, bez `key` – sklep nadaje własny identyfikator – i bez plików, których
+//     wtyczka nie używa: README, INSTRUKCJA, CHANGELOG, vendor/README.md; PRIVACY.md zostaje – czyta go privacy.html)
 // Kod jest wspólny; różni się tylko manifest:
 //   Chrome, Edge – natywny panel boczny (side_panel + uprawnienie sidePanel; Edge ma to samo API co Chrome),
 //   Opera        – pasek boczny Opery (sidebar_action); bez chrome.sidePanel wtyczka sama otwiera panel w okienku.
@@ -40,20 +43,27 @@ const TARGETS = {
   },
 };
 
+const STORE = process.argv.includes("--store");
+const STORE_SKIP = new Set(["README.md", "INSTRUKCJA.md", "CHANGELOG.md", "vendor/README.md"]);
 const wanted = process.argv.slice(2).filter((a) => TARGETS[a]);
 for (const target of wanted.length ? wanted : Object.keys(TARGETS)) {
   const name = `fact-checker-${target}`;
-  const dir = join(DIST, name);
+  const out = STORE ? join(DIST, "store") : DIST;
+  const dir = join(out, name);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
+  const filter = (src) => !STORE || !STORE_SKIP.has(relative(ROOT, src).split("\\").join("/"));
   for (const entry of readdirSync(ROOT)) {
-    if (!SKIP.has(entry)) cpSync(join(ROOT, entry), join(dir, entry), { recursive: true });
+    if (!SKIP.has(entry) && filter(join(ROOT, entry))) cpSync(join(ROOT, entry), join(dir, entry), { recursive: true, filter });
   }
   const manifest = TARGETS[target](structuredClone(base));
+  if (STORE) delete manifest.key;
   writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  const zip = join(DIST, `${name}.zip`);
+  // GitHub: folder w zipie (rozpakuj → „Załaduj rozpakowane”); sklep: manifest.json w katalogu głównym zipa
+  const zipName = STORE ? `${name}-${base.version}.zip` : `${name}.zip`;
+  const zip = join(out, zipName);
   rmSync(zip, { force: true });
-  const z = spawnSync("zip", ["-qr", `${name}.zip`, name], { cwd: DIST });
+  const z = STORE ? spawnSync("zip", ["-qr", join("..", zipName), "."], { cwd: dir }) : spawnSync("zip", ["-qr", zipName, name], { cwd: DIST });
   console.log(`✓ ${relative(ROOT, dir)}${!z.error && z.status === 0 ? ` + ${relative(ROOT, zip)}` : " (bez .zip – brak programu zip)"}  [${manifest.version_name}]`);
 }
 if (!existsSync(DIST)) process.exit(1);
